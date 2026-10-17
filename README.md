@@ -2,7 +2,7 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md)
 
-**Tartarus Light 0.5.1** is a native macOS utility for the **Razer Tartarus V2** (`1532:022B`). It provides lighting controls and device-specific key remapping on Apple Silicon Macs. This is an independent project, not an official Razer product.
+**Tartarus Light** is a native macOS utility for the **Razer Tartarus V2** (`1532:022B`). It provides lighting controls and device-specific key remapping on Apple Silicon Macs. This is an independent project, not an official Razer product.
 
 These READMEs are translated; the application interface is currently in Simplified Chinese. Chinese button labels below match the application.
 
@@ -91,7 +91,7 @@ For mapping, separately enable **启动后自动尝试启用映射** (Attempt ma
 | `0xe00002e2` | Check Input Monitoring for the current **Tartarus Light** app. An old `TartarusInput` grant does not cover it. Also check for another application holding the device. |
 | Permission is enabled, but the app says it is missing | After a rebuild or update, remove the stale entry, add the current app again, enable it, and restart the app. |
 | Custom cycling stops | Keep the app running. It pauses on sleep/session changes. A failed USB response stops cycling and displays an error; change settings or reconnect to retry. |
-| Deleting a color crashes an older build | Update to 0.5.1 or later. Stable color identities fix retained ColorPicker callbacks after deletion and reordering. |
+| Deleting a color crashes an older build | Update to the latest version. Stable color identities fix retained ColorPicker callbacks after deletion and reordering. |
 | Shortcut behaves differently in an app/game | Check the focused app, input layout and that app's acceptance of synthetic keyboard events. Hardware compatibility is not guaranteed for every target app. |
 
 Only the selected Tartarus keyboard interfaces are captured. Modifier state and application focus are shared by macOS, so holding a mapped modifier can affect concurrent typing normally; this does not remap another keyboard's source keys. Mouse buttons, wheel mapping, sequential macros, Fn/Caps Lock lock behavior, and some media/game inputs are unsupported or unvalidated.
