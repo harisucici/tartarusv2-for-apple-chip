@@ -19,6 +19,11 @@ xcrun swiftc -target arm64-apple-macos13.0 -module-cache-path "$task_cache/modul
     -framework Cocoa -framework SwiftUI -framework IOKit -framework ServiceManagement \
     -framework ApplicationServices -framework SystemConfiguration
 
+mkdir -p "$task_app/Contents/Resources"
+for lproj in Sources/en.lproj Sources/zh-Hans.lproj Sources/zh-Hant.lproj Sources/ja.lproj; do
+    cp -R "$lproj" "$task_app/Contents/Resources/$(basename "$lproj")"
+done
+
 rm -f "$task_cache/Info.plist"
 /usr/bin/plutil -create xml1 "$task_cache/Info.plist"
 /usr/bin/plutil -insert CFBundleExecutable -string TartarusLight "$task_cache/Info.plist"
@@ -30,6 +35,7 @@ rm -f "$task_cache/Info.plist"
 /usr/bin/plutil -insert CFBundlePackageType -string APPL "$task_cache/Info.plist"
 /usr/bin/plutil -insert NSHighResolutionCapable -bool YES "$task_cache/Info.plist"
 /usr/bin/plutil -insert LSMinimumSystemVersion -string 13.0 "$task_cache/Info.plist"
+/usr/bin/plutil -insert LSUIElement -bool YES "$task_cache/Info.plist"
 /usr/bin/plutil -insert NSInputMonitoringUsageDescription -string 'Tartarus Light reads only the selected Tartarus V2 for key identification and device-specific remapping.' "$task_cache/Info.plist"
 cp "$task_cache/Info.plist" "$task_app/Contents/Info.plist"
 

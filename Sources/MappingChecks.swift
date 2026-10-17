@@ -62,15 +62,9 @@ func runMappingChecks() {
     precondition(captured.count == 4)
     c.receive("ready")
     precondition(!c.running) // A late callback after stop cannot reactivate mapping.
-    c.monitoring = true
-    c.receive("key 123 31 1")
-    precondition(c.lastKey == "2 · HID 31" && captured.count == 4 && !c.running)
-    c.receive("key 123 31 0"); c.receive("key invalid 4 1")
-    precondition(c.lastKey == "2 · HID 31" && captured.count == 4)
-    c.starting = true; c.receive("key 123 4 1")
-    precondition(c.lastKey == "2 · HID 31")
+    c.starting = true
     c.stop()
-    precondition(!c.monitoring && !c.starting && captured.count == 4)
+    precondition(!c.starting && captured.count == 4)
     let p = MappingProfile(bindings:bindings,location:loc)
     precondition(try! JSONDecoder().decode(MappingProfile.self,from:JSONEncoder().encode(p)).location == loc)
     precondition(quotedShell("a'b") == "'a'\\''b'")

@@ -13,10 +13,9 @@ final class MappingController: ObservableObject {
     @Published var locations: [UInt32] = []
     @Published var running = false
     @Published var starting = false
-    @Published var monitoring = false
-    @Published var lastKey = "等待设备按键"
+    @Published var lastKey = NSLocalizedString("status.waiting_for_key", comment: "")
     @Published var testText = ""
-    @Published var status = "仅对选中 USB 位置的 Tartarus V2 改键。"
+    @Published var status = NSLocalizedString("status.initial_mapping_only", comment: "")
     @Published var permissionStatus = ""
     @Published var autoStart = false {
         didSet { UserDefaults.standard.set(autoStart,forKey:"autoStartMappingV03") }
@@ -26,7 +25,6 @@ final class MappingController: ObservableObject {
     private let eventSource = CGEventSource(stateID:.privateState)
     private var timer: Timer?
     private var repeatTimer: Timer?
-    private var learning: UUID?
     // Used by the self-test only. Production always posts the engine's output.
     var eventSink: ((KeyOutput) -> Void)?
     var path: URL { URL(fileURLWithPath:NSHomeDirectory()).appendingPathComponent("Library/Application Support/TartarusControl/mapping.json") }
@@ -49,12 +47,19 @@ final class MappingController: ObservableObject {
         do {
             try FileManager.default.createDirectory(at:path.deletingLastPathComponent(),withIntermediateDirectories:true)
             try JSONEncoder().encode(MappingProfile(bindings:bindings,location:selectedLocation)).write(to:path,options:.atomic)
-            status = "映射和目标 USB 位置已保存；灯光配置单独保存。"
-        } catch { status = "保存失败："+error.localizedDescription }
+            status = NSLocalizedString("status.mapping_saved", comment: "")
+            if running {
+                // Already running: just update bindings in memory (no admin password needed)
+                status = String(format:NSLocalizedString("status.mapping_enabled", comment: ""), String(format:"%08X",selectedLocation))
+            } else if validate() {
+                // First time: need to start the privileged process (requires admin password)
+                start()
+            }
+        } catch { status = NSLocalizedString("status.save_failed", comment: "")+error.localizedDescription }
     }
     @discardableResult func validate() -> Bool {
-        guard Set(bindings.map(\.source)).count == bindings.count else { status = "同一个来源键只能有一条映射，请删除重复项。"; return false }
-        guard bindings.allSatisfy({ $0.valid }) else { status = "每条组合映射需要 1–4 个不同的有效目标键。"; return false }
+        guard Set(bindings.map(\.source)).count == bindings.count else { status = NSLocalizedString("status.duplicate_source", comment: ""); return false }
+        guard bindings.allSatisfy({ $0.valid }) else { status = NSLocalizedString("status.invalid_combo", comment: ""); return false }
         return true
     }
     func refresh() {
@@ -63,34 +68,36 @@ final class MappingController: ObservableObject {
     }
     func checkPermissions() {
         let input = IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted
-        permissionStatus = "Tartarus Light · 辅助功能："+(AXIsProcessTrusted() ? "已授权" : "未授权")+" · 输入监控："+(input ? "已授权" : "未授权")
+        permissionStatus = String(format:NSLocalizedString("status.permission_format", comment: ""),
+            (AXIsProcessTrusted() ? NSLocalizedString("status.authorized", comment: "") : NSLocalizedString("status.not_authorized", comment: "")),
+            (input ? NSLocalizedString("status.authorized", comment: "") : NSLocalizedString("status.not_authorized", comment: "")))
     }
     func requestPermissions() {
         _ = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String:true] as CFDictionary)
         _ = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
         checkPermissions()
-        status = "辅助功能和输入监控均只需 Tartarus Light。旧的 TartarusInput 不再使用；管理员密码只在系统框内输入。"
+        status = NSLocalizedString("status.permissions_granted_note", comment: "")
     }
     func start() {
         stop(); refresh(); checkPermissions()
-        guard locations.contains(selectedLocation), selectedLocation != 0 else { status = "绑定设备未连接，请检测并选择设备。"; return }
-        guard validate(), !bindings.isEmpty else { if bindings.isEmpty { status = "请先添加映射。" }; return }
-        guard AXIsProcessTrusted() else { status = "缺少辅助功能权限，请先点击授权。"; return }
+        guard locations.contains(selectedLocation), selectedLocation != 0 else { status = NSLocalizedString("status.bound_not_connected_select", comment: ""); return }
+        guard validate(), !bindings.isEmpty else { if bindings.isEmpty { status = NSLocalizedString("status.add_binding_first", comment: "") }; return }
+        guard AXIsProcessTrusted() else { status = NSLocalizedString("status.missing_accessibility", comment: ""); return }
         starting = true
-        status = "等待 macOS 管理员授权，仅接管所选 Tartarus V2。"
+        status = NSLocalizedString("status.waiting_for_admin", comment: "")
         do {
             try privileged.start(location:selectedLocation) { [weak self] line in self?.receive(line) }
-        } catch { stop(); status = "启动失败："+error.localizedDescription }
+        } catch { stop(); status = NSLocalizedString("status.start_failed", comment: "")+error.localizedDescription }
     }
     func receive(_ line: String) {
         if line == "ready" {
             guard starting else { return }
-            starting = false; running = !monitoring
-            status = monitoring ? (learning == nil ? "正在识别选定 Tartarus；期间暂停其原始输入，按停止可恢复。" : "请按一下来源键；识别后自动释放 Tartarus。") : "映射已启用，仅 USB "+String(format:"%08X",selectedLocation)+"；其他设备不做改键。"
+            starting = false; running = true
+            status = String(format:NSLocalizedString("status.mapping_enabled", comment: ""), String(format:"%08X",selectedLocation))
             timer = Timer.scheduledTimer(withTimeInterval:1,repeats:true) { [weak self] _ in
                 guard let self = self else { return }
-                if self.running && !AXIsProcessTrusted() { self.stop(); self.status = "辅助功能授权已失效，已停止映射。" }
-                else if !self.privileged.ping() { self.stop(); self.status = "辅助进程已断开，已停止映射。" }
+                if self.running && !AXIsProcessTrusted() { self.stop(); self.status = NSLocalizedString("status.accessibility_revoked", comment: "") }
+                else if !self.privileged.ping() { self.stop(); self.status = NSLocalizedString("status.helper_disconnected", comment: "") }
             }
             repeatTimer = Timer.scheduledTimer(withTimeInterval:0.02,repeats:true) { [weak self] _ in
                 guard let self = self, self.running else { return }
@@ -98,20 +105,16 @@ final class MappingController: ObservableObject {
             }
         } else if line.hasPrefix("key ") {
             let v = line.split(separator:" ")
-            guard !starting, (running || monitoring), v.count == 4, UInt64(v[1]) != nil, let usage = Int(v[2]), v[3] == "0" || v[3] == "1" else { return }
+            guard !starting, running, v.count == 4, UInt64(v[1]) != nil, let usage = Int(v[2]), v[3] == "0" || v[3] == "1" else { return }
             process(usage:usage,down:v[3] == "1",source:String(v[1])+":"+String(usage))
         } else if line.hasPrefix("error ") {
             stop(); status = String(line.dropFirst(6))
-            if line.contains("0xe00002e2") { status += "。输入监控请允许当前的 Tartarus Light；旧 TartarusInput 授权不适用于新版。" }
-        } else if line == "closed" { stop(); status = "辅助进程结束，设备输入已恢复。" }
+            if line.contains("0xe00002e2") { status += NSLocalizedString("status.input_monitor_hint", comment: "") }
+        } else if line == "closed" { stop(); status = NSLocalizedString("status.helper_closed", comment: "") }
     }
     func process(usage: Int,down: Bool,source: String) {
-        if monitoring {
-            if down { observedKey(usage) }
-            return
-        }
         guard running else { return }
-        if down { lastKey = (keys.first { $0.usage == usage }?.name ?? "未知键")+" · HID \(usage)" }
+        if down { lastKey = String(format:NSLocalizedString("status.last_key_format", comment: ""), (keys.first { $0.usage == usage }?.name ?? NSLocalizedString("status.unknown_key", comment: "")), usage) }
         for output in engine.key(usage:usage,down:down,source:source,bindings:bindings,now:ProcessInfo.processInfo.systemUptime) { post(output) }
     }
     private func post(_ output: KeyOutput) {
@@ -126,25 +129,7 @@ final class MappingController: ObservableObject {
         timer?.invalidate(); timer = nil; repeatTimer?.invalidate(); repeatTimer = nil
         privileged.stop()
         for event in engine.releaseAll() { post(event) }
-        learning = nil
-        running = false; starting = false; monitoring = false
-        status = "已停止，原始设备输入已恢复。"
-    }
-    func observe(learning id: UUID? = nil) {
-        stop(); refresh()
-        guard selectedLocation != 0, locations.contains(selectedLocation) else { status = "请选择已连接设备。"; return }
-        learning = id; monitoring = true; starting = true
-        status = "由 Tartarus Light 输入模式识别按键，等待管理员授权。"
-        do {
-            try privileged.start(location:selectedLocation) { [weak self] line in self?.receive(line) }
-        } catch { stop(); status = "识别启动失败："+error.localizedDescription }
-    }
-    private func observedKey(_ usage: Int) {
-        guard monitoring, let key = keys.first(where:{$0.usage == usage}) else { return }
-        lastKey = key.name+" · HID \(usage)"
-        if let id = learning, let index = bindings.firstIndex(where:{$0.id == id}) {
-            bindings[index].source = usage
-            stop(); status = "已识别来源："+key.name+"；保存后再启用映射。"
-        }
+        running = false; starting = false
+        status = NSLocalizedString("status.stopped_input_restored", comment: "")
     }
 }

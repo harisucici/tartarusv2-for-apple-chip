@@ -1,0 +1,170 @@
+/* Main.swift */
+"nav.lights" = "Lights";
+"nav.mapping" = "Key Mapping";
+"sidebar.tartarus_v2" = "TARTARUS V2";
+"sidebar.version" = "Local Device Control · v0.5.1";
+
+"menu.show" = "Show Tartarus Light";
+"menu.language" = "Language";
+"menu.about" = "About Tartarus Light";
+"menu.quit" = "Quit Tartarus Light";
+
+"lang.zh-Hans" = "简体中文";
+"lang.zh-Hant" = "繁體中文";
+"lang.en" = "English";
+"lang.ja" = "日本語";
+
+"sidebar.language_label" = "LANGUAGE";
+
+"effect.off" = "Off";
+"effect.solid" = "Solid Color";
+"effect.spectrum" = "Spectrum Cycle";
+
+"hw.please_select_device_and_color" = "Please select a connected device and a valid color";
+"hw.device_disconnected_waiting" = "Device disconnected, waiting to reconnect";
+"hw.device_acknowledged" = "Device acknowledged · %@";
+"hw.usb_not_acknowledged" = "USB lighting not acknowledged: %@, device state %d, response length %d.";
+
+/* LightView.swift */
+"lights.eyebrow" = "CHROMA STUDIO";
+"lights.title" = "Make Colors Your Own";
+"lights.detail" = "Changes apply instantly and save automatically. Settings are restored at launch and when the device reconnects.";
+
+"device.card_title" = "Device";
+"device.connected" = "Connected";
+"device.disconnected" = "Not Connected";
+"device.picker_label" = "Target Device";
+"device.choose" = "Select a Device";
+"device.tartarus_v2" = "Tartarus V2 · %@";
+"device.bound_not_connected" = "Bound device not connected";
+"device.rescan_help" = "Rescan for Devices";
+"device.detect_button" = "Detect Devices";
+
+"lights.card_title" = "Lighting Effect";
+"lights.auto_apply_caption" = "Auto-applied";
+"lights.off_hint" = "Turn off the backlight of the selected device.";
+
+"preview.label" = "Live Preview";
+
+"startup.card_title" = "Startup";
+"startup.open_at_login" = "Open automatically at login";
+"startup.open_settings" = "Login Items Settings";
+
+"solid.color_picker" = "Backlight Color";
+"solid.white" = "White";
+
+"cycle.mode_picker" = "Cycle Mode";
+"cycle.full_spectrum" = "Full Spectrum";
+"cycle.custom" = "Custom Colors";
+"cycle.color_n" = "Color %d";
+"cycle.move_earlier_help" = "Move Earlier";
+"cycle.remove_help" = "Remove Color";
+"cycle.add_color" = "Add Color";
+"cycle.hint_range" = "2–8 colors · smooth transition";
+"cycle.duration_label" = "Cycle Length";
+"cycle.duration_accessibility" = "Cycle duration";
+"cycle.seconds_format" = "%d s";
+"cycle.custom_explainer" = "The custom cycle is driven by the app; when it quits, the last color stays.";
+"cycle.builtin_explainer" = "The device cycles through the full spectrum. Choose “Custom Colors” to edit the order and speed.";
+
+/* LightController.swift */
+"status.waiting_for_device" = "Waiting for Tartarus V2 to connect";
+"status.auto_save_failed" = "Auto-save failed: ";
+"status.invalid_config" = "Invalid lighting config, not sent";
+"status.config_saved_waiting_device" = "Config saved · waiting for selected device to connect";
+"status.device_disconnected_resume" = "Device disconnected · lighting will resume on reconnect";
+"status.custom_cycle_running" = "Custom cycle running · auto-saved and applied in real time";
+"status.saved_and_applied" = "Auto-saved and applied · %@";
+"status.retry_after_change" = "%@ Change the settings or reconnect the device to retry.";
+
+/* MappingView.swift */
+"mapping.eyebrow" = "KEY ASSIGNMENTS";
+"mapping.title" = "One Key, More Actions";
+"mapping.detail" = "Assign single keys or combos to Tartarus. Only the selected device is remapped; a regular keyboard is unaffected.";
+
+"mapping.device_card_title" = "Target Device";
+"mapping.device_running" = "Mapping running";
+"mapping.device_ready" = "Ready to configure";
+"mapping.device_picker_label" = "Target Device";
+"mapping.device_choose" = "Select a Device";
+"mapping.device_tartarus_v2" = "Tartarus V2 · USB %@";
+"mapping.device_bound_not_connected" = "Bound device not connected";
+"mapping.detect_button" = "Detect Devices";
+"mapping.identify_button" = "Identify Key";
+"mapping.identify_help" = "Read via Tartarus Light input mode; may request admin approval. While identifying, the selected device is temporarily taken over.";
+
+"mapping.list_title" = "Mappings";
+"mapping.list_count" = "%d";
+"mapping.add_button" = "Add Mapping";
+"mapping.empty_hint" = "Add a mapping, e.g. 1 → ⌘⇧C or 2 → C + V.";
+
+"mapping.save_button" = "Save Mappings";
+"mapping.enable_button" = "Authorize & Enable";
+"mapping.stop_resume_button" = "Stop / Resume";
+
+"mapping.test_card_title" = "Test Area";
+"mapping.test_card_caption" = "Click, then press a physical key";
+"mapping.test_placeholder" = "Test output from Tartarus and a regular keyboard here";
+"mapping.test_hint" = "Combos run the matching shortcut; e.g. ⌘A selects all the text here.";
+
+"mapping.permissions_card_title" = "Permissions & Launch";
+"mapping.permissions_request_button" = "Grant Remap Permissions";
+"mapping.auto_start_toggle" = "Try enabling mappings automatically on launch";
+"mapping.permissions_hint_primary" = "Both Accessibility and Input Monitoring are needed by Tartarus Light only. The old TartarusInput is no longer used. Lighting does not need either permission.";
+"mapping.permissions_hint_secondary" = "Enabling may prompt for admin authorization. Stop, unplug, or quit to release the device; a different USB port requires reselecting.";
+
+"editor.tartarus_source_label" = "TARTARUS SOURCE";
+"editor.source_key_picker" = "Source Key";
+"editor.learn_source_button" = "Learn Source";
+"editor.learn_source_help" = "Learn via Tartarus Light input mode; may request admin approval. The Tartarus is released automatically once the source key is pressed.";
+"editor.output_combo_label" = "Output Combo";
+"editor.delete_mapping_help" = "Delete Mapping";
+"editor.modifiers_label" = "Modifiers";
+"editor.modifier.command" = "⌘ Command";
+"editor.modifier.shift" = "⇧ Shift";
+"editor.modifier.option" = "⌥ Option";
+"editor.modifier.control" = "⌃ Control";
+"editor.target_key_label" = "Target Key";
+"editor.target_key_picker" = "Target Key";
+"editor.primary_key_label" = "Primary";
+"editor.extra_target_label" = "Extra target %d";
+"editor.delete_target_key_help" = "Remove Target Key";
+"editor.add_simultaneous_key" = "Add simultaneous key";
+"editor.shortcuts_menu" = "Shortcut Presets";
+"editor.preset.copy" = "Copy · ⌘C";
+"editor.preset.paste" = "Paste · ⌘V";
+"editor.preset.screenshot" = "Screenshot · ⌘⇧4";
+"editor.preset.plain" = "Plain Key";
+"editor.hold_release_hint" = "Press together while the source is held\nRelease together when the source is released";
+
+/* MappingController.swift */
+"status.waiting_for_key" = "Waiting for a key press";
+"status.initial_mapping_only" = "Remaps only the Tartarus V2 at the selected USB location.";
+"status.mapping_saved" = "Mappings and target USB location saved; lighting is saved separately.";
+"status.save_failed" = "Save failed: ";
+"status.duplicate_source" = "Each source key may have only one mapping. Remove duplicates.";
+"status.invalid_combo" = "Each combo mapping needs 1–4 distinct valid target keys.";
+"status.authorized" = "Granted";
+"status.not_authorized" = "Not granted";
+"status.permission_format" = "Tartarus Light · Accessibility: %@ · Input Monitoring: %@";
+"status.permissions_granted_note" = "Both Accessibility and Input Monitoring are needed by Tartarus Light only. The old TartarusInput is no longer used; the admin password is entered only in the system dialog.";
+"status.bound_not_connected_select" = "Bound device not connected. Detect and select a device.";
+"status.add_binding_first" = "Add a mapping first.";
+"status.missing_accessibility" = "Missing Accessibility permission. Tap to authorize first.";
+"status.waiting_for_admin" = "Waiting for macOS admin approval; only the selected Tartarus V2 is taken over.";
+"status.start_failed" = "Start failed: ";
+"status.identifying_tartarus" = "Identifying the selected Tartarus; its raw input is paused during this. Press Stop to restore.";
+"status.press_source_key" = "Press the source key. Tartarus is released automatically after identification.";
+"status.mapping_enabled" = "Mapping enabled; USB %@ only. Other devices are untouched.";
+"status.accessibility_revoked" = "Accessibility authorization was revoked; mapping stopped.";
+"status.helper_disconnected" = "Helper process disconnected; mapping stopped.";
+"status.input_monitor_hint" = ". Allow the current Tartarus Light under Input Monitoring; the old TartarusInput approval does not apply to the new version.";
+"status.helper_closed" = "Helper process exited; device input restored.";
+"status.stopped_input_restored" = "Stopped; original device input restored.";
+"status.unknown_key" = "Unknown key";
+"status.select_connected_device" = "Please select a connected device.";
+"status.identify_waiting_admin" = "Identifying keys via Tartarus Light input mode, waiting for admin approval.";
+"status.identify_start_failed" = "Failed to start identification: ";
+"status.source_identified" = "Source identified: %@. Save, then enable the mapping.";
+"status.last_key_format" = "%@ · HID %d";
+"status.device_usb_format" = "USB %@ only";

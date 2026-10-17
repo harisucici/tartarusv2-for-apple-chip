@@ -1,0 +1,170 @@
+/* Main.swift — navigation / sidebar / hardware messages */
+"nav.lights" = "灯光效果";
+"nav.mapping" = "按键映射";
+"sidebar.tartarus_v2" = "TARTARUS V2";
+"sidebar.version" = "本地设备控制 · v0.5.1";
+
+"menu.show" = "显示 Tartarus Light";
+"menu.language" = "语言";
+"menu.about" = "关于 Tartarus Light";
+"menu.quit" = "退出 Tartarus Light";
+
+"lang.zh-Hans" = "简体中文";
+"lang.zh-Hant" = "繁體中文";
+"lang.en" = "English";
+"lang.ja" = "日本語";
+
+"sidebar.language_label" = "语言";
+
+"effect.off" = "关闭";
+"effect.solid" = "固定颜色";
+"effect.spectrum" = "光谱循环";
+
+"hw.please_select_device_and_color" = "请选择已连接的设备和有效颜色";
+"hw.device_disconnected_waiting" = "设备已断开，等待重新连接";
+"hw.device_acknowledged" = "设备已确认 · %@";
+"hw.usb_not_acknowledged" = "USB 灯光未确认：%@，设备状态 %d，回应长度 %d。";
+
+/* LightView.swift — lights page */
+"lights.eyebrow" = "CHROMA STUDIO";
+"lights.title" = "让色彩随你而动";
+"lights.detail" = "调整即生效，设置自动保存。启动和设备重连时自动恢复灯光。";
+
+"device.card_title" = "设备";
+"device.connected" = "已连接";
+"device.disconnected" = "未连接";
+"device.picker_label" = "目标设备";
+"device.choose" = "请选择设备";
+"device.tartarus_v2" = "Tartarus V2 · %@";
+"device.bound_not_connected" = "绑定设备未连接";
+"device.rescan_help" = "重新检测设备";
+"device.detect_button" = "检测设备";
+
+"lights.card_title" = "灯光效果";
+"lights.auto_apply_caption" = "自动应用";
+"lights.off_hint" = "关闭选定设备的背光。";
+
+"preview.label" = "实时预览";
+
+"startup.card_title" = "启动设置";
+"startup.open_at_login" = "登录后自动打开程序";
+"startup.open_settings" = "登录项设置";
+
+"solid.color_picker" = "背光颜色";
+"solid.white" = "白色";
+
+"cycle.mode_picker" = "循环模式";
+"cycle.full_spectrum" = "完整色谱";
+"cycle.custom" = "自定义颜色";
+"cycle.color_n" = "颜色 %d";
+"cycle.move_earlier_help" = "提前";
+"cycle.remove_help" = "删除颜色";
+"cycle.add_color" = "添加颜色";
+"cycle.hint_range" = "2–8 种颜色 · 平滑循环";
+"cycle.duration_label" = "一轮时长";
+"cycle.duration_accessibility" = "循环时长";
+"cycle.seconds_format" = "%d 秒";
+"cycle.custom_explainer" = "自定义循环由程序实时驱动，退出后停留在最后颜色。";
+"cycle.builtin_explainer" = "由设备循环完整色谱。选择“自定义颜色”可编辑颜色顺序和速度。";
+
+/* LightController.swift — status messages */
+"status.waiting_for_device" = "等待连接 Tartarus V2";
+"status.auto_save_failed" = "自动保存失败：";
+"status.invalid_config" = "灯光配置无效，未发送";
+"status.config_saved_waiting_device" = "配置已保存 · 等待选定设备连接";
+"status.device_disconnected_resume" = "设备已断开 · 重连后自动恢复灯光";
+"status.custom_cycle_running" = "自定义循环运行中 · 自动保存并实时应用";
+"status.saved_and_applied" = "已自动保存并应用 · %@";
+"status.retry_after_change" = "%@ 修改设置或重连设备后重试。";
+
+/* MappingView.swift — mapping page */
+"mapping.eyebrow" = "KEY ASSIGNMENTS";
+"mapping.title" = "一键，更多操作";
+"mapping.detail" = "为 Tartarus 设置单键或组合键。仅映射选定设备，普通键盘不受影响。";
+
+"mapping.device_card_title" = "目标设备";
+"mapping.device_running" = "映射运行中";
+"mapping.device_ready" = "准备配置";
+"mapping.device_picker_label" = "目标设备";
+"mapping.device_choose" = "请选择设备";
+"mapping.device_tartarus_v2" = "Tartarus V2 · USB %@";
+"mapping.device_bound_not_connected" = "绑定设备未连接";
+"mapping.detect_button" = "检测设备";
+"mapping.identify_button" = "识别按键";
+"mapping.identify_help" = "由 Tartarus Light 输入模式读取，可能要求管理员确认；识别期间暂时接管选定设备。";
+
+"mapping.list_title" = "映射列表";
+"mapping.list_count" = "%d 条";
+"mapping.add_button" = "添加映射";
+"mapping.empty_hint" = "添加映射，例如 1 → ⌘⇧C，或 2 → C + V。";
+
+"mapping.save_button" = "保存映射";
+"mapping.enable_button" = "授权启用改键";
+"mapping.stop_resume_button" = "停止 / 恢复";
+
+"mapping.test_card_title" = "测试区域";
+"mapping.test_card_caption" = "点击后按实体按键";
+"mapping.test_placeholder" = "在此测试 Tartarus 和普通键盘的输出";
+"mapping.test_hint" = "组合键会执行对应快捷操作；如 ⌘A 会全选测试文字。";
+
+"mapping.permissions_card_title" = "权限与启动";
+"mapping.permissions_request_button" = "授予改键权限";
+"mapping.auto_start_toggle" = "启动后自动尝试启用映射";
+"mapping.permissions_hint_primary" = "辅助功能和输入监控均只需 Tartarus Light；旧 TartarusInput 不再使用。灯光无需这两项权限。";
+"mapping.permissions_hint_secondary" = "启用时可能弹出管理员授权。停止、断开或退出会释放设备；换 USB 插口后需重新选择。";
+
+"editor.tartarus_source_label" = "TARTARUS 来源";
+"editor.source_key_picker" = "来源按键";
+"editor.learn_source_button" = "识别来源";
+"editor.learn_source_help" = "通过 Tartarus Light 输入模式识别，可能要求管理员确认；按下来源键后自动释放设备。";
+"editor.output_combo_label" = "输出组合";
+"editor.delete_mapping_help" = "删除映射";
+"editor.modifiers_label" = "修饰键";
+"editor.modifier.command" = "⌘ Command";
+"editor.modifier.shift" = "⇧ Shift";
+"editor.modifier.option" = "⌥ Option";
+"editor.modifier.control" = "⌃ Control";
+"editor.target_key_label" = "目标键";
+"editor.target_key_picker" = "目标按键";
+"editor.primary_key_label" = "主键";
+"editor.extra_target_label" = "附加目标键 %d";
+"editor.delete_target_key_help" = "删除目标键";
+"editor.add_simultaneous_key" = "添加同时按下的键";
+"editor.shortcuts_menu" = "快捷模板";
+"editor.preset.copy" = "复制 · ⌘C";
+"editor.preset.paste" = "粘贴 · ⌘V";
+"editor.preset.screenshot" = "截图 · ⌘⇧4";
+"editor.preset.plain" = "普通按键";
+"editor.hold_release_hint" = "按住来源时一起按下\n松开来源时一起释放";
+
+/* MappingController.swift — status & permissions */
+"status.waiting_for_key" = "等待设备按键";
+"status.initial_mapping_only" = "仅对选中 USB 位置的 Tartarus V2 改键。";
+"status.mapping_saved" = "映射和目标 USB 位置已保存；灯光配置单独保存。";
+"status.save_failed" = "保存失败：";
+"status.duplicate_source" = "同一个来源键只能有一条映射，请删除重复项。";
+"status.invalid_combo" = "每条组合映射需要 1–4 个不同的有效目标键。";
+"status.authorized" = "已授权";
+"status.not_authorized" = "未授权";
+"status.permission_format" = "Tartarus Light · 辅助功能：%@ · 输入监控：%@";
+"status.permissions_granted_note" = "辅助功能和输入监控均只需 Tartarus Light。旧的 TartarusInput 不再使用；管理员密码只在系统框内输入。";
+"status.bound_not_connected_select" = "绑定设备未连接，请检测并选择设备。";
+"status.add_binding_first" = "请先添加映射。";
+"status.missing_accessibility" = "缺少辅助功能权限，请先点击授权。";
+"status.waiting_for_admin" = "等待 macOS 管理员授权，仅接管所选 Tartarus V2。";
+"status.start_failed" = "启动失败：";
+"status.identifying_tartarus" = "正在识别选定 Tartarus；期间暂停其原始输入，按停止可恢复。";
+"status.press_source_key" = "请按一下来源键；识别后自动释放 Tartarus。";
+"status.mapping_enabled" = "映射已启用，仅 USB %@；其他设备不做改键。";
+"status.accessibility_revoked" = "辅助功能授权已失效，已停止映射。";
+"status.helper_disconnected" = "辅助进程已断开，已停止映射。";
+"status.input_monitor_hint" = "。输入监控请允许当前的 Tartarus Light；旧 TartarusInput 授权不适用于新版。";
+"status.helper_closed" = "辅助进程结束，设备输入已恢复。";
+"status.stopped_input_restored" = "已停止，原始设备输入已恢复。";
+"status.unknown_key" = "未知键";
+"status.select_connected_device" = "请选择已连接设备。";
+"status.identify_waiting_admin" = "由 Tartarus Light 输入模式识别按键，等待管理员授权。";
+"status.identify_start_failed" = "识别启动失败：";
+"status.source_identified" = "已识别来源：%@；保存后再启用映射。";
+"status.last_key_format" = "%@ · HID %d";
+"status.device_usb_format" = "仅 USB %@";

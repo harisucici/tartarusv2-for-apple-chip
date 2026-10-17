@@ -1,0 +1,170 @@
+/* Main.swift */
+"nav.lights" = "ライティング";
+"nav.mapping" = "キー割り当て";
+"sidebar.tartarus_v2" = "TARTARUS V2";
+"sidebar.version" = "ローカルデバイス制御 · v0.5.1";
+
+"menu.show" = "Tartarus Light を表示";
+"menu.language" = "言語";
+"menu.about" = "Tartarus Light について";
+"menu.quit" = "Tartarus Light を終了";
+
+"lang.zh-Hans" = "简体中文";
+"lang.zh-Hant" = "繁體中文";
+"lang.en" = "English";
+"lang.ja" = "日本語";
+
+"sidebar.language_label" = "言語";
+
+"effect.off" = "消灯";
+"effect.solid" = "単色";
+"effect.spectrum" = "スペクトラム循環";
+
+"hw.please_select_device_and_color" = "接続済みデバイスと有効な色を選択してください";
+"hw.device_disconnected_waiting" = "デバイスは切断されました。再接続を待っています";
+"hw.device_acknowledged" = "デバイスが応答しました · %@";
+"hw.usb_not_acknowledged" = "USB ライティングが応答しません: %@、デバイス状態 %d、応答長 %d。";
+
+/* LightView.swift */
+"lights.eyebrow" = "CHROMA STUDIO";
+"lights.title" = "色彩を思いのままに";
+"lights.detail" = "変更は即座に反映され、自動保存されます。起動時とデバイス再接続時に設定が復元されます。";
+
+"device.card_title" = "デバイス";
+"device.connected" = "接続済み";
+"device.disconnected" = "未接続";
+"device.picker_label" = "対象デバイス";
+"device.choose" = "デバイスを選択";
+"device.tartarus_v2" = "Tartarus V2 · %@";
+"device.bound_not_connected" = "割り当て済みデバイスは未接続";
+"device.rescan_help" = "デバイスを再検出";
+"device.detect_button" = "デバイスを検出";
+
+"lights.card_title" = "ライティング効果";
+"lights.auto_apply_caption" = "自動適用";
+"lights.off_hint" = "選択したデバイスのバックライトを消灯します。";
+
+"preview.label" = "リアルタイムプレビュー";
+
+"startup.card_title" = "起動設定";
+"startup.open_at_login" = "ログイン時に自動で開く";
+"startup.open_settings" = "ログイン項目の設定";
+
+"solid.color_picker" = "バックライトカラー";
+"solid.white" = "ホワイト";
+
+"cycle.mode_picker" = "循環モード";
+"cycle.full_spectrum" = "フルスペクトル";
+"cycle.custom" = "カスタムカラー";
+"cycle.color_n" = "カラー %d";
+"cycle.move_earlier_help" = "前に移動";
+"cycle.remove_help" = "カラーを削除";
+"cycle.add_color" = "カラーを追加";
+"cycle.hint_range" = "2～8 色 · なめらかに循環";
+"cycle.duration_label" = "1 周の長さ";
+"cycle.duration_accessibility" = "循環の長さ";
+"cycle.seconds_format" = "%d 秒";
+"cycle.custom_explainer" = "カスタム循環はアプリが駆動します。終了時は最後の色が残ります。";
+"cycle.builtin_explainer" = "デバイスがフルスペクトルを循環します。「カスタムカラー」を選ぶと順番と速度を編集できます。";
+
+/* LightController.swift */
+"status.waiting_for_device" = "Tartarus V2 の接続を待っています";
+"status.auto_save_failed" = "自動保存に失敗しました: ";
+"status.invalid_config" = "ライティング設定が無効なため送信されませんでした";
+"status.config_saved_waiting_device" = "設定を保存しました · 選択したデバイスの接続を待っています";
+"status.device_disconnected_resume" = "デバイスは切断されました · 再接続後にライティングを復元します";
+"status.custom_cycle_running" = "カスタム循環を実行中 · 自動保存されリアルタイムに適用";
+"status.saved_and_applied" = "自動保存・適用しました · %@";
+"status.retry_after_change" = "%@ 設定を変更するか、デバイスを再接続して再試行してください。";
+
+/* MappingView.swift */
+"mapping.eyebrow" = "KEY ASSIGNMENTS";
+"mapping.title" = "1 キーで、もっと幅広く";
+"mapping.detail" = "Tartarus に単一キーやショートカットを割り当てます。選択したデバイスだけが変わり、普通のキーボードには影響しません。";
+
+"mapping.device_card_title" = "対象デバイス";
+"mapping.device_running" = "割り当て実行中";
+"mapping.device_ready" = "設定準備完了";
+"mapping.device_picker_label" = "対象デバイス";
+"mapping.device_choose" = "デバイスを選択";
+"mapping.device_tartarus_v2" = "Tartarus V2 · USB %@";
+"mapping.device_bound_not_connected" = "割り当て済みデバイスは未接続";
+"mapping.detect_button" = "デバイスを検出";
+"mapping.identify_button" = "キーを識別";
+"mapping.identify_help" = "Tartarus Light の入力モードで読み取ります。管理者の確認を求められる場合があります。識別中は選択デバイスを一時的に引き受けます。";
+
+"mapping.list_title" = "割り当て一覧";
+"mapping.list_count" = "%d 件";
+"mapping.add_button" = "割り当てを追加";
+"mapping.empty_hint" = "割り当てを追加します。例: 1 → ⌘⇧C、2 → C + V。";
+
+"mapping.save_button" = "割り当てを保存";
+"mapping.enable_button" = "承認して有効化";
+"mapping.stop_resume_button" = "停止 / 復元";
+
+"mapping.test_card_title" = "テスト領域";
+"mapping.test_card_caption" = "クリックしてから実キーを押してください";
+"mapping.test_placeholder" = "Tartarus と普通のキーボードの出力をここで試します";
+"mapping.test_hint" = "組み合わせは対応するショートカットを実行します。例: ⌘A はここで文字を全選択します。";
+
+"mapping.permissions_card_title" = "権限と起動";
+"mapping.permissions_request_button" = "割り当ての権限を要求";
+"mapping.auto_start_toggle" = "起動後に割り当ての有効化を試みる";
+"mapping.permissions_hint_primary" = "アクセシビリティと入力監視のどちらも Tartarus Light だけで使います。旧 TartarusInput は使いません。ライティングにこれら権限は不要です。";
+"mapping.permissions_hint_secondary" = "有効化時に管理者の承認を求めることがあります。停止・切断・終了でデバイスを解放します。USB ポートを変えた場合は選び直してください。";
+
+"editor.tartarus_source_label" = "TARTARUS 入力元";
+"editor.source_key_picker" = "入力元キー";
+"editor.learn_source_button" = "入力元を識別";
+"editor.learn_source_help" = "Tartarus Light の入力モードで識別します。管理者の確認を求められる場合があります。入力元キーを押すと自動的に Tartarus を解放します。";
+"editor.output_combo_label" = "出力の組み合わせ";
+"editor.delete_mapping_help" = "割り当てを削除";
+"editor.modifiers_label" = "修飾キー";
+"editor.modifier.command" = "⌘ Command";
+"editor.modifier.shift" = "⇧ Shift";
+"editor.modifier.option" = "⌥ Option";
+"editor.modifier.control" = "⌃ Control";
+"editor.target_key_label" = "出力キー";
+"editor.target_key_picker" = "出力キー";
+"editor.primary_key_label" = "メインキー";
+"editor.extra_target_label" = "追加の出力キー %d";
+"editor.delete_target_key_help" = "出力キーを削除";
+"editor.add_simultaneous_key" = "同時押しのキーを追加";
+"editor.shortcuts_menu" = "ショートカットのプリセット";
+"editor.preset.copy" = "コピー · ⌘C";
+"editor.preset.paste" = "ペースト · ⌘V";
+"editor.preset.screenshot" = "スクリーンショット · ⌘⇧4";
+"editor.preset.plain" = "普通のキー";
+"editor.hold_release_hint" = "入力元キーを押している間、まとめて押下\n入力元キーを離すと、まとめて解放";
+
+/* MappingController.swift */
+"status.waiting_for_key" = "デバイスのキー入力を待っています";
+"status.initial_mapping_only" = "選択した USB 位置の Tartarus V2 だけを書き換えます。";
+"status.mapping_saved" = "割り当てと対象 USB 位置を保存しました。ライティング設定は別に保存されます。";
+"status.save_failed" = "保存に失敗しました: ";
+"status.duplicate_source" = "同じ入力元キーには 1 件の割り当てだけです。重複を削除してください。";
+"status.invalid_combo" = "各組み合わせには 1～4 個の異なる有効な出力キーが必要です。";
+"status.authorized" = "許可済み";
+"status.not_authorized" = "未許可";
+"status.permission_format" = "Tartarus Light · アクセシビリティ: %@ · 入力監視: %@";
+"status.permissions_granted_note" = "アクセシビリティと入力監視は Tartarus Light だけで使います。旧 TartarusInput は使いません。管理者パスワードはシステムダイアログ内でのみ入力します。";
+"status.bound_not_connected_select" = "割り当て済みデバイスは未接続です。検出してデバイスを選択してください。";
+"status.add_binding_first" = "先に割り当てを追加してください。";
+"status.missing_accessibility" = "アクセシビリティ権限がありません。まず承認してください。";
+"status.waiting_for_admin" = "macOS の管理者承認を待っています。選択した Tartarus V2 のみを引き受けます。";
+"status.start_failed" = "起動に失敗しました: ";
+"status.identifying_tartarus" = "選択した Tartarus を識別中です。元の入力は一時的に止まります。「停止」で復元します。";
+"status.press_source_key" = "入力元キーを押してください。識別後に Tartarus を自動的に解放します。";
+"status.mapping_enabled" = "割り当てを有効化しました。USB %@ のみ。ほかのデバイスは書き換えません。";
+"status.accessibility_revoked" = "アクセシビリティの許可が取り消されたため、割り当てを停止しました。";
+"status.helper_disconnected" = "補助プロセスが切断されたため、割り当てを停止しました。";
+"status.input_monitor_hint" = "。入力監視で現在の Tartarus Light を許可してください。旧 TartarusInput の許可は新バージョンには引き継がれません。";
+"status.helper_closed" = "補助プロセスが終了しました。デバイスの入力は復元されています。";
+"status.stopped_input_restored" = "停止しました。デバイスの元入力は復元されています。";
+"status.unknown_key" = "不明なキー";
+"status.select_connected_device" = "接続済みデバイスを選択してください。";
+"status.identify_waiting_admin" = "Tartarus Light の入力モードでキーを識別します。管理者の承認を待っています。";
+"status.identify_start_failed" = "識別の起動に失敗しました: ";
+"status.source_identified" = "入力元を識別しました: %@。保存してから割り当てを有効にしてください。";
+"status.last_key_format" = "%@ · HID %d";
+"status.device_usb_format" = "USB %@ のみ";

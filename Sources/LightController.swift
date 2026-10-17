@@ -14,12 +14,12 @@ final class LightController: ObservableObject {
     @Published var effect: LightEffect = .solid
     @Published private(set) var cycleStops = RGB.defaults.map { CycleStop(rgb:$0) }
     var cycleColors: [RGB] { cycleStops.map(\.rgb) }
-    @Published var cycleSeconds = 8.0
+    @Published var cycleSeconds = 10.0
     @Published var customCycle = false
     @Published var locations: [UInt32] = []
     @Published var selectedLocation: UInt32 = 0
     @Published private(set) var busy = false
-    @Published var status = "等待连接 Tartarus V2"
+    @Published var status = NSLocalizedString("status.waiting_for_device", comment: "")
     @Published private(set) var preview = RGB.defaults[0]
     private var changes: AnyCancellable?
     private var ticker: Timer?
@@ -78,7 +78,7 @@ final class LightController: ObservableObject {
             try FileManager.default.createDirectory(at:path.deletingLastPathComponent(),withIntermediateDirectories:true)
             try JSONEncoder().encode(p).write(to:path,options:.atomic)
             return true
-        } catch { status = "自动保存失败："+error.localizedDescription; return false }
+        } catch { status = NSLocalizedString("status.auto_save_failed", comment: "")+error.localizedDescription; return false }
     }
     func detect() {
         let found = Array(Set(LightHardware.devices().map(LightHardware.location))).filter { $0 != 0 }.sorted()
@@ -89,14 +89,14 @@ final class LightController: ObservableObject {
     private func scheduleIfChanged() {
         let p = profile
         guard p != observed else { return }
-        guard p.valid else { status = "灯光配置无效，未发送"; return }
+        guard p.valid else { status = NSLocalizedString("status.invalid_config", comment: ""); return }
         observed = p; generation += 1; cycling = false; sent = nil
         debounce?.cancel()
         preview = p.effect == .off ? RGB(red:0,green:0,blue:0) : (p.effect == .spectrum && customCycle ? p.palette[0] : RGB(red:red,green:green,blue:blue))
         let task = DispatchWorkItem { [weak self] in
             guard let self = self, p.valid, !self.suspended else { return }
             let saved = self.save(p)
-            guard self.connected else { self.status = "配置已保存 · 等待选定设备连接"; return }
+            guard self.connected else { self.status = NSLocalizedString("status.config_saved_waiting_device", comment: ""); return }
             self.cycleStart = ProcessInfo.processInfo.systemUptime
             self.cycling = p.effect == .spectrum && p.customCycle == true
             self.send(p.frame(elapsed:0),generation:self.generation,isCycle:self.cycling,saved:saved)
@@ -110,7 +110,7 @@ final class LightController: ObservableObject {
             refreshAt = now + 2
             let wasConnected = connected; detect()
             if !connected {
-                if wasConnected || cycling { generation += 1; sent = nil; cycling = false; status = "设备已断开 · 重连后自动恢复灯光" }
+                if wasConnected || cycling { generation += 1; sent = nil; cycling = false; status = NSLocalizedString("status.device_disconnected_resume", comment: "") }
                 return
             }
             if !wasConnected { observed = nil; scheduleIfChanged(); return }
@@ -135,9 +135,9 @@ final class LightController: ObservableObject {
                 guard token == self.generation, !self.suspended else { self.scheduleIfChanged(); return }
                 if result.ok {
                     self.sent = p
-                    self.status = isCycle ? "自定义循环运行中 · 自动保存并实时应用" : (saved ? "已自动保存并应用 · "+p.effect.name : result.message)
+                    self.status = isCycle ? NSLocalizedString("status.custom_cycle_running", comment: "") : (saved ? String(format:NSLocalizedString("status.saved_and_applied", comment: ""), p.effect.name) : result.message)
                 } else {
-                    self.cycling = false; self.status = result.message + " 修改设置或重连设备后重试。"
+                    self.cycling = false; self.status = String(format:NSLocalizedString("status.retry_after_change", comment: ""), result.message)
                 }
                 self.scheduleIfChanged()
             }
