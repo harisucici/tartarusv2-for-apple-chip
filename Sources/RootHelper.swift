@@ -20,7 +20,7 @@ final class InputReader {
         }
         devices.removeAll(); manager = nil
     }
-    func run(location: UInt32) -> Int32 {
+    func run(location: UInt32, consoleUID: uid_t? = nil) -> Int32 {
         let m = IOHIDManagerCreate(kCFAllocatorDefault,0); manager = m
         IOHIDManagerSetDeviceMatching(m,DeviceScope.matching(location:location) as CFDictionary)
         guard let ds = IOHIDManagerCopyDevices(m) as? Set<IOHIDDevice>, !ds.isEmpty else { output("error 未找到 Tartarus V2 键盘接口"); return 2 }
@@ -57,12 +57,15 @@ final class InputReader {
         output("ready")
         var heartbeat = Date()
         while alive {
+            if let consoleUID, InputService.consoleUser() != consoleUID { break }
+            if Date().timeIntervalSince(heartbeat) > 5 { break }
             CFRunLoopRunInMode(.defaultMode,0.1,false)
             var data = [UInt8](repeating:0,count:64)
             let n = recv(fd,&data,data.count,MSG_DONTWAIT)
             if n == 0 { break }
             if n > 0 {
                 if data.prefix(n).contains(120) { break } // 'x': release and exit.
+                if data.prefix(n).contains(99) { output(InputService.inputAccessLine) } // 'c': status only.
                 heartbeat = Date()
             }
             if n < 0 && errno != EAGAIN && errno != EINTR { break }

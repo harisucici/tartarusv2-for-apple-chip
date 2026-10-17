@@ -40,6 +40,9 @@ func runCoreChecks() {
     precondition(!invalid.valid)
     var cycle = p; cycle.effect = .spectrum; cycle.customCycle = true; cycle.cycleSeconds = 4
     cycle.cycleColors = [RGB(red:1,green:0,blue:0),RGB(red:0,green:0,blue:1)]
+    var rainbow = cycle; rainbow.customCycle = false; rainbow.cycleSeconds = 10
+    precondition(rainbow.frame(elapsed:0) != rainbow.frame(elapsed:5))
+    precondition(rainbow.frame(elapsed:0) == rainbow.frame(elapsed:10))
     let halfway = cycle.frame(elapsed:1)
     precondition(halfway.effect == .solid && halfway.red == 0.5 && halfway.blue == 0.5)
     precondition(cycle.frame(elapsed:0) == cycle.frame(elapsed:4))

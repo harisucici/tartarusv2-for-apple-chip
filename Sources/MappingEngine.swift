@@ -20,17 +20,28 @@ let keys: [Key] = {
     result += navigation.map { Key(name:$0.0,usage:$0.1,code:$0.2) }
     return result
 }()
-struct KeyBinding: Codable, Identifiable {
+struct MacroStep: Codable, Identifiable, Equatable {
+    var id = UUID()
+    var usage = 4
+    var delay = 0.1
+    var command = false; var shift = false; var option = false; var control = false
+    var binding: KeyBinding { KeyBinding(source:usage,target:usage,command:command,shift:shift,option:option,control:control) }
+    var valid: Bool { binding.valid && delay.isFinite && (0...60).contains(delay) }
+}
+struct KeyBinding: Codable, Identifiable, Equatable {
     var id = UUID(); var source = 4; var target = 4
     var command = false; var shift = false; var option = false; var control = false
     var extraTargets: [Int]? = nil
+    var macro: [MacroStep]? = nil
+    var isMacro: Bool { macro != nil }
     var targetUsages: [Int] { [target] + (extraTargets ?? []) }
     var valid: Bool {
-        keys.contains { $0.usage == source } && (1...4).contains(targetUsages.count)
+        keys.contains { $0.usage == source } && (macro.map { !$0.isEmpty && $0.count <= 100 && $0.allSatisfy(\.valid) } ?? true) && (1...4).contains(targetUsages.count)
         && Set(targetUsages).count == targetUsages.count
         && targetUsages.allSatisfy { usage in keys.contains { $0.usage == usage } }
     }
     var display: String {
+        if let macro { return macro.map { $0.binding.display }.joined(separator:" → ") }
         let mods = [control ? "⌃" : "", option ? "⌥" : "", shift ? "⇧" : "", command ? "⌘" : ""].joined()
         return mods + targetUsages.compactMap { usage in keys.first { $0.usage == usage }?.name }.joined(separator:" + ")
     }

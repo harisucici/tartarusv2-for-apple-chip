@@ -78,7 +78,7 @@ On the tested Japanese macOS version, the Accessibility permission page is named
 
 Holding a source holds its targets; releasing it releases them. Ordinary single keys repeat; shortcut and multi-key combinations do not auto-repeat. Unconfigured supported keys retain their original meanings. These combinations are simultaneous chords, not sequential macros.
 
-The app uses a temporary administrator input process, not an installed background daemon. Starting mapping or identification may request administrator approval again. Enabling login launch does not bypass this approval.
+The first mapping activation installs a launchd input service through the macOS administrator dialog. Later activations, saves, app restarts, and computer restarts reuse it without a password. The service checks the client signature and active console user, handles only the selected Tartarus V2, and releases input on stop, disconnect, or app exit. Rebuilding/updating the service or removing it can require approval again. The permissions section offers an uninstall button (administrator approval required). If macOS requests Input Monitoring for `local.tartarus.light.input`, allow the service.
 
 ## Tutorial: automatic startup
 

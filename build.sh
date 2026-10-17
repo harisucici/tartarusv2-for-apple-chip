@@ -37,13 +37,13 @@ xcrun clang -target arm64-apple-macos13.0 -fmodules-cache-path="$task_cache/modu
 xcrun swiftc -target arm64-apple-macos13.0 -module-cache-path "$task_cache/modules" \
     -import-objc-header Sources/USBTransport.h -parse-as-library \
     Sources/Main.swift Sources/LightController.swift Sources/LightView.swift Sources/Theme.swift \
-    Sources/StartupController.swift Sources/CoreChecks.swift Sources/MappingEngine.swift \
+    Sources/StartupController.swift Sources/SystemSettingsView.swift Sources/CoreChecks.swift Sources/MappingEngine.swift \
     Sources/MappingController.swift Sources/MappingView.swift Sources/MappingChecks.swift \
-    Sources/PrivilegedInput.swift Sources/RootHelper.swift Sources/IPC.swift Sources/DeviceScope.swift \
+    Sources/PrivilegedInput.swift Sources/InputService.swift Sources/RootHelper.swift Sources/IPC.swift Sources/DeviceScope.swift \
     "$task_cache/VersionInfo.swift" \
     "$task_cache/USBTransport.o" -o "$task_app/Contents/MacOS/TartarusLight" \
     -framework Cocoa -framework SwiftUI -framework IOKit -framework ServiceManagement \
-    -framework ApplicationServices -framework SystemConfiguration
+    -framework ApplicationServices -framework SystemConfiguration -framework Security
 
 mkdir -p "$task_app/Contents/Resources"
 for lproj in Sources/en.lproj Sources/zh-Hans.lproj Sources/zh-Hant.lproj Sources/ja.lproj; do

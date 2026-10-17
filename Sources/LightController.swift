@@ -51,7 +51,7 @@ final class LightController: ObservableObject {
         for url in [path,old] {
             guard let data = try? Data(contentsOf:url), let p = try? JSONDecoder().decode(LightProfile.self,from:data), p.valid else { continue }
             red=p.red; green=p.green; blue=p.blue; effect=p.effect; selectedLocation=p.location ?? 0
-            cycleStops=p.palette.map { CycleStop(rgb:$0) }; cycleSeconds=p.duration; customCycle=p.customCycle ?? false; break
+            cycleStops=p.palette.map { CycleStop(rgb:$0) }; cycleSeconds=max(10,p.duration); customCycle=p.customCycle ?? false; break
         }
     }
     // SwiftUI/AppKit can retain a ColorPicker binding after its row is removed.
@@ -92,13 +92,14 @@ final class LightController: ObservableObject {
         guard p.valid else { status = NSLocalizedString("status.invalid_config", comment: ""); return }
         observed = p; generation += 1; cycling = false; sent = nil
         debounce?.cancel()
+        cycleStart = ProcessInfo.processInfo.systemUptime
         preview = p.effect == .off ? RGB(red:0,green:0,blue:0) : (p.effect == .spectrum && customCycle ? p.palette[0] : RGB(red:red,green:green,blue:blue))
         let task = DispatchWorkItem { [weak self] in
             guard let self = self, p.valid, !self.suspended else { return }
             let saved = self.save(p)
             guard self.connected else { self.status = NSLocalizedString("status.config_saved_waiting_device", comment: ""); return }
             self.cycleStart = ProcessInfo.processInfo.systemUptime
-            self.cycling = p.effect == .spectrum && p.customCycle == true
+            self.cycling = p.effect == .spectrum
             self.send(p.frame(elapsed:0),generation:self.generation,isCycle:self.cycling,saved:saved)
         }
         debounce = task; DispatchQueue.main.asyncAfter(deadline:.now()+0.25,execute:task)
@@ -106,6 +107,10 @@ final class LightController: ObservableObject {
     private func tick() {
         guard !suspended else { return }
         let now = ProcessInfo.processInfo.systemUptime
+        if effect == .spectrum {
+            let frame = profile.frame(elapsed:now-cycleStart)
+            preview = RGB(red:frame.red,green:frame.green,blue:frame.blue)
+        }
         if now >= refreshAt {
             refreshAt = now + 2
             let wasConnected = connected; detect()
