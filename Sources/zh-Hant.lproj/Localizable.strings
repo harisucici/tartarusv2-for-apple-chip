@@ -168,3 +168,14 @@
 "status.source_identified" = "已識別來源：%@；儲存後再啟用對應。";
 "status.last_key_format" = "%@ · HID %d";
 "status.device_usb_format" = "僅 USB %@";
+
+/* MappingPreview */
+"mapping.selected_title" = "選中項目";
+"mapping.select_key_hint" = "點選已對應的按鍵以進行編輯。";
+"mapping.select_key_subhint" = "或點選空白按鍵以新增對應。";
+"preview.mapped_count_format" = "已對應 %d / %d 個按鍵";
+"preview.key_mapped_help" = "按鍵 %1$d：%2$@";
+"preview.key_unmapped_help" = "按鍵 %d（未對應，點一下以新增）";
+"preview.key_mapped_access" = "Tartarus 按鍵 %1$d，已對應為 %2$@";
+"preview.key_unmapped_access" = "Tartarus 按鍵 %d，尚未對應";
+"preview.accessibility_label" = "Tartarus 按鍵對應預覽";

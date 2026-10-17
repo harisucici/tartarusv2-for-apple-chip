@@ -168,3 +168,14 @@
 "status.source_identified" = "入力元を識別しました: %@。保存してから割り当てを有効にしてください。";
 "status.last_key_format" = "%@ · HID %d";
 "status.device_usb_format" = "USB %@ のみ";
+
+/* MappingPreview */
+"mapping.selected_title" = "選択中";
+"mapping.select_key_hint" = "割り当て済みのキーをタップして編集します。";
+"mapping.select_key_subhint" = "空のキーをタップすると新しい割り当てを追加します。";
+"preview.mapped_count_format" = "%d / %d キー割り当て済み";
+"preview.key_mapped_help" = "キー %1$d: %2$@";
+"preview.key_unmapped_help" = "キー %d（空、タップして割り当て）";
+"preview.key_mapped_access" = "Tartarus キー %1$d、%2$@ に割り当て済み";
+"preview.key_unmapped_access" = "Tartarus キー %d、未割り当て";
+"preview.accessibility_label" = "Tartarus のキー割り当てプレビュー";

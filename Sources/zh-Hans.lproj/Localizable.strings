@@ -168,3 +168,14 @@
 "status.source_identified" = "已识别来源：%@；保存后再启用映射。";
 "status.last_key_format" = "%@ · HID %d";
 "status.device_usb_format" = "仅 USB %@";
+
+/* MappingPreview */
+"mapping.selected_title" = "选中项";
+"mapping.select_key_hint" = "点击已映射的按键进行编辑。";
+"mapping.select_key_subhint" = "或点击空白按键添加新映射。";
+"preview.mapped_count_format" = "已映射 %d / %d 个按键";
+"preview.key_mapped_help" = "按键 %1$d：%2$@";
+"preview.key_unmapped_help" = "按键 %d（未映射，点击添加）";
+"preview.key_mapped_access" = "Tartarus 按键 %1$d，映射为 %2$@";
+"preview.key_unmapped_access" = "Tartarus 按键 %d，尚未映射";
+"preview.accessibility_label" = "Tartarus 按键映射预览";

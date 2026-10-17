@@ -20,6 +20,7 @@ final class MappingController: ObservableObject {
     @Published var autoStart = false {
         didSet { UserDefaults.standard.set(autoStart,forKey:"autoStartMappingV03") }
     }
+    @Published var selectedSource: Int? = nil
     private let engine = MappingEngine()
     private let privileged = PrivilegedInput()
     private let eventSource = CGEventSource(stateID:.privateState)

@@ -168,3 +168,14 @@
 "status.source_identified" = "Source identified: %@. Save, then enable the mapping.";
 "status.last_key_format" = "%@ · HID %d";
 "status.device_usb_format" = "USB %@ only";
+
+/* MappingPreview */
+"mapping.selected_title" = "Selection";
+"mapping.select_key_hint" = "Tap a mapped key to edit it.";
+"mapping.select_key_subhint" = "Or tap an empty key to add a new mapping.";
+"preview.mapped_count_format" = "%d / %d keys mapped";
+"preview.key_mapped_help" = "Key %1$d: %2$@";
+"preview.key_unmapped_help" = "Key %d (empty, tap to map)";
+"preview.key_mapped_access" = "Tartarus key %1$d, mapped to %2$@";
+"preview.key_unmapped_access" = "Tartarus key %d, not mapped yet";
+"preview.accessibility_label" = "Tartarus key mapping preview";
