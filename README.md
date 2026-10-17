@@ -1,3 +1,7 @@
+<img width="1120" height="822" alt="スクリーンショット 0008-10-17 16 08 18" src="https://github.com/user-attachments/assets/f7572b1c-4f6e-44a5-95fe-22a8a6bfc2f7" />
+<img width="1114" height="817" alt="スクリーンショット 0008-10-17 16 08 02" src="https://github.com/user-attachments/assets/b71f82b9-93aa-471f-8417-625241bbf178" />
+
+
 # Tartarus V2 for Apple Silicon
 
 [English](README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md)
