@@ -223,53 +223,20 @@ final class Delegate: NSObject, NSApplicationDelegate {
         }
         if mapping.autoStart { DispatchQueue.main.async { [weak self] in self?.mapping.start() } }
         setupStatusBar()
-        observers.append(NotificationCenter.default.addObserver(forName: .appLanguageDidChange, object: nil, queue: .main) { [weak self] _ in
-            self?.rebuildStatusMenu()
-        })
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in self?.hideMainWindow() }
     }
     func applicationWillTerminate(_ notification: Notification) { controller.suspend(); mapping.stop() }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     private func setupStatusBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        if let button = statusItem.button,
-           let image = NSImage(systemSymbolName: "bolt.shield.fill", accessibilityDescription: "Tartarus Light") {
-            image.isTemplate = true
-            button.image = image
+        if let button = statusItem.button {
+            if let image = NSImage(systemSymbolName: "bolt.shield.fill", accessibilityDescription: "Tartarus Light") {
+                image.isTemplate = true
+                button.image = image
+            }
+            button.action = #selector(showMainWindow)
+            button.target = self
         }
-        rebuildStatusMenu()
-    }
-    private func rebuildStatusMenu() {
-        let menu = NSMenu()
-        let showItem = NSMenuItem(title: NSLocalizedString("menu.show", comment: ""), action: #selector(showMainWindow), keyEquivalent: "")
-        showItem.target = self
-        menu.addItem(showItem)
-        menu.addItem(.separator())
-
-        let langItem = NSMenuItem(title: NSLocalizedString("menu.language", comment: ""), action: nil, keyEquivalent: "")
-        let langSubmenu = NSMenu()
-        for (code, name) in locale.menuItems() {
-            let item = NSMenuItem(title: name, action: #selector(selectLanguage(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = code
-            if code == locale.currentLanguage { item.state = .on }
-            langSubmenu.addItem(item)
-        }
-        langItem.submenu = langSubmenu
-        menu.addItem(langItem)
-
-        menu.addItem(.separator())
-        let aboutItem = NSMenuItem(title: NSLocalizedString("menu.about", comment: ""), action: #selector(showAbout), keyEquivalent: "")
-        aboutItem.target = self
-        menu.addItem(aboutItem)
-        let quitItem = NSMenuItem(title: NSLocalizedString("menu.quit", comment: ""), action: #selector(quitApp), keyEquivalent: "q")
-        quitItem.target = self
-        menu.addItem(quitItem)
-        statusItem.menu = menu
-    }
-    @objc func selectLanguage(_ sender: NSMenuItem) {
-        guard let code = sender.representedObject as? String else { return }
-        locale.select(code)
     }
     private func hideMainWindow() {
         guard let window = NSApplication.shared.windows.first else { return }
@@ -278,9 +245,17 @@ final class Delegate: NSObject, NSApplicationDelegate {
         window.orderOut(nil)
     }
     @objc func showMainWindow() {
-        guard let window = mainWindow ?? NSApplication.shared.windows.first else { return }
-        window.makeKeyAndOrderFront(nil)
-        NSApplication.shared.activate(ignoringOtherApps: true)
+        if let window = mainWindow {
+            if window.isMiniaturized { window.deminiaturize(nil) }
+            window.makeKeyAndOrderFront(nil)
+            NSApplication.shared.activate(ignoringOtherApps: true)
+        } else if let window = NSApplication.shared.windows.first(where: { !($0 is NSPanel) }) {
+            mainWindow = window
+            window.delegate = self
+            if window.isMiniaturized { window.deminiaturize(nil) }
+            window.makeKeyAndOrderFront(nil)
+            NSApplication.shared.activate(ignoringOtherApps: true)
+        }
     }
     @objc func showAbout() {
         NSApplication.shared.activate(ignoringOtherApps: true)
@@ -292,9 +267,17 @@ final class Delegate: NSObject, NSApplicationDelegate {
         let options: [NSApplication.AboutPanelOptionKey: Any] = [.credits: credits]
         NSApplication.shared.orderFrontStandardAboutPanel(options: options)
     }
-    @objc func quitApp() {
-        NSApplication.shared.terminate(nil)
+    @objc func quitApp() { NSApp.terminate(nil) }
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        let alert = NSAlert()
+        alert.messageText = NSLocalizedString("quit.confirm.title", comment: "")
+        alert.informativeText = NSLocalizedString("quit.confirm.message", comment: "")
+        alert.addButton(withTitle: NSLocalizedString("quit.confirm.cancel", comment: ""))
+        alert.addButton(withTitle: NSLocalizedString("quit.confirm.quit", comment: ""))
+        alert.alertStyle = .warning
+        return alert.runModal() == .alertSecondButtonReturn ? .terminateNow : .terminateCancel
     }
+
 }
 extension Delegate: NSWindowDelegate {
     func windowShouldClose(_ sender: NSWindow) -> Bool {
@@ -321,9 +304,13 @@ struct RootView: View {
                 navigation(NSLocalizedString("nav.lights", comment: ""),icon:"lightbulb.led",tab:0)
                 navigation(NSLocalizedString("nav.mapping", comment: ""),icon:"keyboard",tab:1)
                 Spacer()
-                languagePicker
-                Text("TARTARUS V2").font(.system(size:10,weight:.semibold,design:.monospaced)).foregroundStyle(RazerTheme.green)
-                Text(NSLocalizedString("sidebar.version", comment: "")).font(.system(size:10)).foregroundStyle(.secondary)
+                VStack(alignment:.leading, spacing:8) {
+                    languagePicker
+                    footerButtons
+                    Text("TARTARUS V2").font(.system(size:10,weight:.semibold,design:.monospaced)).foregroundStyle(RazerTheme.green)
+                    Text(String(format: NSLocalizedString("sidebar.version", comment: ""), VersionInfo.version))
+                        .font(.system(size:10)).foregroundStyle(.secondary)
+                }
             }.padding(22).frame(width:186).background(Color.black.opacity(0.35))
             Rectangle().fill(RazerTheme.border).frame(width:1)
             Group {
@@ -373,8 +360,13 @@ struct RootView: View {
         languageName(for: locale.currentLanguage)
     }
     func languageName(for code: String) -> String {
-        let items = locale.menuItems()
-        return items.first(where: { $0.code == code })?.name ?? code
+        switch code {
+        case "zh-Hans": return NSLocalizedString("lang.zh-Hans", comment: "")
+        case "zh-Hant": return NSLocalizedString("lang.zh-Hant", comment: "")
+        case "en": return NSLocalizedString("lang.en", comment: "")
+        case "ja": return NSLocalizedString("lang.ja", comment: "")
+        default: return code
+        }
     }
     func navigation(_ title:String,icon:String,tab:Int) -> some View {
         Button { mapping.selectedTab = tab } label: {
@@ -386,6 +378,27 @@ struct RootView: View {
                 .background(mapping.selectedTab == tab ? RazerTheme.green.opacity(0.09) : .clear,in:RoundedRectangle(cornerRadius:7))
         }.buttonStyle(.plain)
     }
+    var footerButtons: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(NSLocalizedString("menu.about", comment: ""))
+                .font(.system(size: 10, weight: .semibold))
+            Text("Harisucici")
+            Text("harisucici@gmail.com")
+                .textSelection(.enabled)
+            Text("Line: +81 7092401286")
+                .textSelection(.enabled)
+            Button { delegate.quitApp() } label: {
+                Label(NSLocalizedString("menu.quit", comment: ""), systemImage: "power")
+                    .font(.system(size: 11, weight: .medium))
+                    .padding(.vertical, 6)
+            }
+            .buttonStyle(.plain)
+        }
+        .font(.system(size: 9))
+        .foregroundStyle(.secondary)
+        .padding(.top, 4)
+    }
+
 }
 struct LightApp: App {
     @NSApplicationDelegateAdaptor(Delegate.self) var delegate

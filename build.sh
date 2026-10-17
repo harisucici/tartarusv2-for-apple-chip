@@ -7,6 +7,31 @@ task_app="$PWD/build/Tartarus Light.app"
 mkdir -p "$task_cache/tmp" "$task_cache/modules" "$task_app/Contents/MacOS"
 export TMPDIR="$task_cache/tmp"
 
+# --- Version generation: YYYY-MM-DD-vN format ---
+TODAY=$(date +%Y-%m-%d)
+VERSION_FILE="$PWD/version.txt"
+if [[ -f "$VERSION_FILE" ]]; then
+    stored_date=$(cut -d' ' -f1 < "$VERSION_FILE")
+    stored_count=$(cut -d' ' -f2 < "$VERSION_FILE")
+    if [[ "$stored_date" == "$TODAY" ]]; then
+        count=$((stored_count + 1))
+    else
+        count=1
+    fi
+else
+    count=1
+fi
+echo "$TODAY $count" > "$VERSION_FILE"
+APP_VERSION="${TODAY}-v${count}"
+print "Version: $APP_VERSION"
+
+# Generate VersionInfo.swift so the app can display the build version at runtime
+cat > "$task_cache/VersionInfo.swift" <<SWIFT
+enum VersionInfo {
+    static let version = "$APP_VERSION"
+}
+SWIFT
+
 xcrun clang -target arm64-apple-macos13.0 -fmodules-cache-path="$task_cache/modules" \
     -c Sources/USBTransport.c -o "$task_cache/USBTransport.o"
 xcrun swiftc -target arm64-apple-macos13.0 -module-cache-path "$task_cache/modules" \
@@ -15,13 +40,16 @@ xcrun swiftc -target arm64-apple-macos13.0 -module-cache-path "$task_cache/modul
     Sources/StartupController.swift Sources/CoreChecks.swift Sources/MappingEngine.swift \
     Sources/MappingController.swift Sources/MappingView.swift Sources/MappingChecks.swift \
     Sources/PrivilegedInput.swift Sources/RootHelper.swift Sources/IPC.swift Sources/DeviceScope.swift \
+    "$task_cache/VersionInfo.swift" \
     "$task_cache/USBTransport.o" -o "$task_app/Contents/MacOS/TartarusLight" \
     -framework Cocoa -framework SwiftUI -framework IOKit -framework ServiceManagement \
     -framework ApplicationServices -framework SystemConfiguration
 
 mkdir -p "$task_app/Contents/Resources"
 for lproj in Sources/en.lproj Sources/zh-Hans.lproj Sources/zh-Hant.lproj Sources/ja.lproj; do
-    cp -R "$lproj" "$task_app/Contents/Resources/$(basename "$lproj")"
+    task_locale="$task_app/Contents/Resources/$(basename "$lproj")"
+    rm -rf "$task_locale"
+    cp -R "$lproj" "$task_locale"
 done
 
 rm -f "$task_cache/Info.plist"
@@ -30,8 +58,8 @@ rm -f "$task_cache/Info.plist"
 /usr/bin/plutil -insert CFBundleIdentifier -string local.tartarus.light "$task_cache/Info.plist"
 /usr/bin/plutil -insert CFBundleName -string 'Tartarus Light' "$task_cache/Info.plist"
 /usr/bin/plutil -insert CFBundleDisplayName -string 'Tartarus Light' "$task_cache/Info.plist"
-/usr/bin/plutil -insert CFBundleVersion -string 6 "$task_cache/Info.plist"
-/usr/bin/plutil -insert CFBundleShortVersionString -string 0.5.1 "$task_cache/Info.plist"
+/usr/bin/plutil -insert CFBundleVersion -string "$APP_VERSION" "$task_cache/Info.plist"
+/usr/bin/plutil -insert CFBundleShortVersionString -string "$APP_VERSION" "$task_cache/Info.plist"
 /usr/bin/plutil -insert CFBundlePackageType -string APPL "$task_cache/Info.plist"
 /usr/bin/plutil -insert NSHighResolutionCapable -bool YES "$task_cache/Info.plist"
 /usr/bin/plutil -insert LSMinimumSystemVersion -string 13.0 "$task_cache/Info.plist"

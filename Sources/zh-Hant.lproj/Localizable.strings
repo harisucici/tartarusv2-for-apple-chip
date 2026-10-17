@@ -2,19 +2,24 @@
 "nav.lights" = "燈光效果";
 "nav.mapping" = "按鍵對應";
 "sidebar.tartarus_v2" = "TARTARUS V2";
-"sidebar.version" = "本機裝置控制 · v0.5.1";
+"sidebar.version" = "本機裝置控制 · %@";
 
 "menu.show" = "顯示 Tartarus Light";
 "menu.language" = "語言";
-"menu.about" = "關於 Tartarus Light";
-"menu.quit" = "結束 Tartarus Light";
+"menu.about" = "關於我們";
+"menu.quit" = "結束";
 
 "lang.zh-Hans" = "简体中文";
 "lang.zh-Hant" = "繁體中文";
 "lang.en" = "English";
 "lang.ja" = "日本語";
 
-"sidebar.language_label" = "語言";
+"sidebar.language_label" = "語言選擇";
+
+"quit.confirm.title" = "確認結束";
+"quit.confirm.message" = "確定要結束 Tartarus Light 嗎？";
+"quit.confirm.cancel" = "取消";
+"quit.confirm.quit" = "結束";
 
 "effect.off" = "關閉";
 "effect.solid" = "固定色彩";
