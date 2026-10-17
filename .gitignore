@@ -1,0 +1,12 @@
+.DS_Store
+.build/
+build/
+*.app/
+*.dSYM/
+*.zip
+*.ips
+*.log
+lights.json
+mapping.json
+profile.json
+
