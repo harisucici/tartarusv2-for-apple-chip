@@ -131,13 +131,20 @@ struct LightProfile: Codable, Equatable {
     var cycleSeconds: Double? = nil
     var customCycle: Bool? = nil
     var palette: [RGB] { cycleColors ?? RGB.defaults }
-    var duration: Double { cycleSeconds ?? 8 }
+    var duration: Double { cycleSeconds ?? 10 }
     var valid: Bool {
         RGB(red:red,green:green,blue:blue).valid && (2...8).contains(palette.count)
         && palette.allSatisfy(\.valid) && duration.isFinite && (2...60).contains(duration)
     }
     func frame(elapsed: TimeInterval) -> LightProfile {
-        guard effect == .spectrum, customCycle == true else { return self }
+        guard effect == .spectrum else { return self }
+        if customCycle != true {
+            let hue = max(0,elapsed).truncatingRemainder(dividingBy:duration) / duration
+            let color = NSColor(calibratedHue:hue,saturation:1,brightness:1,alpha:1).usingColorSpace(.deviceRGB)!
+            var p = self; p.effect = .solid
+            p.red = color.redComponent; p.green = color.greenComponent; p.blue = color.blueComponent
+            return p
+        }
         let position = max(0,elapsed).truncatingRemainder(dividingBy:duration) / duration * Double(palette.count)
         let index = Int(position), fraction = position - Double(index)
         let a = palette[index], b = palette[(index+1) % palette.count]
@@ -215,17 +222,38 @@ final class Delegate: NSObject, NSApplicationDelegate {
     private var mainWindow: NSWindow?
     func applicationDidFinishLaunching(_ notification: Notification) {
         let center = NSWorkspace.shared.notificationCenter
-        for name in [NSWorkspace.willSleepNotification, NSWorkspace.sessionDidResignActiveNotification] {
-            observers.append(center.addObserver(forName:name,object:nil,queue:.main) { [weak self] _ in self?.mapping.stop(); self?.controller.suspend() })
+        let suspendEvents: [(Notification.Name,MappingResumeState.Reason)] = [
+            (NSWorkspace.willSleepNotification,.sleep),
+            (NSWorkspace.screensDidSleepNotification,.display),
+            (NSWorkspace.sessionDidResignActiveNotification,.session)
+        ]
+        for (name,reason) in suspendEvents {
+            observers.append(center.addObserver(forName:name,object:nil,queue:.main) { [weak self] _ in
+                self?.mapping.suspend(reason); self?.controller.suspend()
+            })
         }
-        for name in [NSWorkspace.didWakeNotification, NSWorkspace.sessionDidBecomeActiveNotification] {
-            observers.append(center.addObserver(forName:name,object:nil,queue:.main) { [weak self] _ in self?.controller.resume() })
+        let resumeEvents: [(Notification.Name,MappingResumeState.Reason)] = [
+            (NSWorkspace.didWakeNotification,.sleep),
+            (NSWorkspace.screensDidWakeNotification,.display),
+            (NSWorkspace.sessionDidBecomeActiveNotification,.session)
+        ]
+        for (name,reason) in resumeEvents {
+            observers.append(center.addObserver(forName:name,object:nil,queue:.main) { [weak self] _ in
+                self?.mapping.resume(reason); self?.controller.resume()
+            })
         }
+        let distributed = DistributedNotificationCenter.default()
+        observers.append(distributed.addObserver(forName:Notification.Name("com.apple.screenIsLocked"),object:nil,queue:.main) { [weak self] _ in
+            self?.mapping.suspend(.lock)
+        })
+        observers.append(distributed.addObserver(forName:Notification.Name("com.apple.screenIsUnlocked"),object:nil,queue:.main) { [weak self] _ in
+            self?.mapping.resume(.lock)
+        })
         if mapping.autoStart { DispatchQueue.main.async { [weak self] in self?.mapping.start() } }
         setupStatusBar()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in self?.hideMainWindow() }
     }
-    func applicationWillTerminate(_ notification: Notification) { controller.suspend(); mapping.stop() }
+    func applicationWillTerminate(_ notification: Notification) { _ = mapping.save(); controller.suspend(); mapping.stop() }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     private func setupStatusBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -303,6 +331,7 @@ struct RootView: View {
                 Rectangle().fill(RazerTheme.border).frame(height:1).padding(.vertical,22)
                 navigation(NSLocalizedString("nav.lights", comment: ""),icon:"lightbulb.led",tab:0)
                 navigation(NSLocalizedString("nav.mapping", comment: ""),icon:"keyboard",tab:1)
+                navigation(NSLocalizedString("settings.title",comment:""),icon:"gearshape",tab:2)
                 Spacer()
                 VStack(alignment:.leading, spacing:8) {
                     languagePicker
@@ -315,7 +344,8 @@ struct RootView: View {
             Rectangle().fill(RazerTheme.border).frame(width:1)
             Group {
                 if mapping.selectedTab == 0 { ContentView(c:delegate.controller,startup:delegate.startup) }
-                else { MappingView(m:delegate.mapping) }
+                else if mapping.selectedTab == 1 { MappingView(m:delegate.mapping) }
+                else { SystemSettingsView(mapping:delegate.mapping,startup:delegate.startup) }
             }.frame(maxWidth:.infinity,maxHeight:.infinity)
         }.frame(minWidth:1120,minHeight:790).background(RazerTheme.background)
         .preferredColorScheme(.dark).tint(RazerTheme.green)
@@ -408,6 +438,7 @@ struct LightApp: App {
     static func main() {
         // Dispatch before SwiftUI and its delegate can initialize. The privileged
         // role never creates a UI or reads the user's profile files.
+        if CommandLine.arguments.dropFirst().contains(InputService.flag) { InputService.main(); return }
         if CommandLine.arguments.dropFirst().contains(ReaderInvocation.flag) { InputReaderMain.main(); return }
         if CommandLine.arguments == [CommandLine.arguments[0],"--self-test"] { runCoreChecks(); return }
         guard geteuid() != 0, CommandLine.arguments.count == 1 else { fputs("Unsupported invocation.\n",stderr); exit(64) }

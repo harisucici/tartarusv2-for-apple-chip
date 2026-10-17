@@ -70,7 +70,7 @@
 "cycle.duration_accessibility" = "循环时长";
 "cycle.seconds_format" = "%d 秒";
 "cycle.custom_explainer" = "自定义循环由程序实时驱动，退出后停留在最后颜色。";
-"cycle.builtin_explainer" = "由设备循环完整色谱。选择“自定义颜色”可编辑颜色顺序和速度。";
+"cycle.builtin_explainer" = "完整色谱由程序驱动，与预览同步变色；请保持程序运行。";
 
 /* LightController.swift — status messages */
 "status.waiting_for_device" = "等待连接 Tartarus V2";
@@ -115,8 +115,8 @@
 "mapping.permissions_card_title" = "权限与启动";
 "mapping.permissions_request_button" = "授予改键权限";
 "mapping.auto_start_toggle" = "启动后自动尝试启用映射";
-"mapping.permissions_hint_primary" = "辅助功能和输入监控均只需 Tartarus Light；旧 TartarusInput 不再使用。灯光无需这两项权限。";
-"mapping.permissions_hint_secondary" = "启用时可能弹出管理员授权。停止、断开或退出会释放设备；换 USB 插口后需重新选择。";
+"mapping.permissions_hint_primary" = "Tartarus Light 需要辅助功能权限；若系统要求输入监控，请同时允许后台输入服务（local.tartarus.light.input）。灯光无需这些权限。";
+"mapping.permissions_hint_secondary" = "首次启用会安装后台输入服务并要求管理员密码，之后启用、保存及重启应用无需重复输入。更新服务、卸载或撤销授权后可能需要重新授权。";
 
 "editor.tartarus_source_label" = "TARTARUS 来源";
 "editor.source_key_picker" = "来源按键";
@@ -152,11 +152,11 @@
 "status.authorized" = "已授权";
 "status.not_authorized" = "未授权";
 "status.permission_format" = "Tartarus Light · 辅助功能：%@ · 输入监控：%@";
-"status.permissions_granted_note" = "辅助功能和输入监控均只需 Tartarus Light。旧的 TartarusInput 不再使用；管理员密码只在系统框内输入。";
+"status.permissions_granted_note" = "请在系统设置中允许辅助功能与输入监控。管理员密码仅在首次安装或更新后台服务时由系统对话框请求。";
 "status.bound_not_connected_select" = "绑定设备未连接，请检测并选择设备。";
 "status.add_binding_first" = "请先添加映射。";
 "status.missing_accessibility" = "缺少辅助功能权限，请先点击授权。";
-"status.waiting_for_admin" = "等待 macOS 管理员授权，仅接管所选 Tartarus V2。";
+"status.waiting_for_admin" = "正在连接输入服务；首次安装或更新服务时需要管理员授权。";
 "status.start_failed" = "启动失败：";
 "status.identifying_tartarus" = "正在识别选定 Tartarus；期间暂停其原始输入，按停止可恢复。";
 "status.press_source_key" = "请按一下来源键；识别后自动释放 Tartarus。";
@@ -184,3 +184,91 @@
 "preview.key_mapped_access" = "Tartarus 按键 %1$d，映射为 %2$@";
 "preview.key_unmapped_access" = "Tartarus 按键 %d，尚未映射";
 "preview.accessibility_label" = "Tartarus 按键映射预览";
+
+"macro.enabled" = "连续按键宏";
+
+"macro.hint" = "每次按下执行一次。每步输入按键或快捷键，再等待 0–60 秒；停止映射会取消剩余步骤。";
+
+"macro.delay" = "步骤后等待";
+
+"macro.add" = "添加步骤";
+
+"service.remove" = "卸载后台输入服务…";
+
+"service.removed" = "后台输入服务已卸载，下次启用映射需要重新安装。";
+
+"service.unavailable" = "无法连接后台输入服务。请检查系统登录项中的服务是否被禁用，或卸载后重新安装。";
+
+"mapping.auto_save_hint" = "自动保存；有效修改自动应用";
+
+"mapping.auto_saved" = "已自动保存，点击「启用映射」开始使用。";
+
+"mapping.enable" = "启用映射";
+
+"mapping.paused" = "锁屏或睡眠期间已暂停，恢复后将自动重新连接。";
+
+"service.needs_installation" = "后台服务需要安装或更新，请点击「启用映射」完成一次授权。";
+
+"settings.title" = "权限与自启";
+
+"settings.detail" = "检查改键所需权限、输入服务和登录后自动启动状态。";
+
+"settings.refresh" = "重新检查";
+
+"settings.permissions" = "必要权限";
+
+"settings.accessibility" = "辅助功能 · Tartarus Light";
+
+"settings.input" = "输入监控 · 后台输入服务";
+
+"settings.authorize" = "前往授权";
+
+"settings.permissions.note" = "辅助功能用于输出改键；输入监控以后台服务自身的检测结果为准。未安装、无法连接或系统无法判断时会显示未检测。灯光不需要这些权限。系统设置中如需手动添加，请选择「显示输入服务」定位的应用。";
+
+"settings.service" = "后台输入服务";
+
+"settings.service.status" = "服务状态";
+
+"settings.service.show" = "显示输入服务";
+
+"settings.service.install" = "安装 / 更新服务";
+
+"settings.service.installed" = "输入服务已安装，正在检查状态。";
+
+"settings.service.note" = "首次安装或更新服务需要管理员授权。检查不会接管键盘。服务不可连接时，请查看系统登录项中的后台活动是否被关闭；运行映射时会复用当前连接检查。";
+
+"settings.login.status" = "登录后自动打开程序";
+
+"settings.login.note" = "开机自启指登录此用户后自动打开应用；等待系统批准时尚未启用。请把应用放在固定位置。";
+
+"settings.mapping.startup.note" = "打开程序与自动启用映射是两个独立设置；启用映射仍需要必要权限和已安装的输入服务。";
+
+"settings.open" = "检查权限与登录自启";
+
+"settings.granted" = "已授权";
+
+"settings.denied" = "未授权";
+
+"settings.unknown" = "未检测 / 无法确定";
+
+"settings.service.missing" = "未安装";
+
+"settings.service.update" = "已安装，需更新";
+
+"settings.service.unavailable" = "已安装，但暂时无法连接";
+
+"settings.service.ready" = "已连接";
+
+"settings.service.checking" = "检查中…";
+
+"settings.login.enabled" = "已启用";
+
+"settings.login.approval" = "等待系统批准，尚未启用";
+
+"settings.login.disabled" = "已关闭";
+
+"settings.login.unavailable" = "启动项未就绪，请保持应用位于固定位置";
+
+"settings.login.unknown" = "无法确认登录自启状态";
+
+"settings.login.error" = "自启设置失败：";

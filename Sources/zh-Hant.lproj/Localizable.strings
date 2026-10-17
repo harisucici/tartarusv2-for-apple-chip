@@ -70,7 +70,7 @@
 "cycle.duration_accessibility" = "循環時長";
 "cycle.seconds_format" = "%d 秒";
 "cycle.custom_explainer" = "自訂循環由程式即時驅動，結束時會停留在最後的色彩。";
-"cycle.builtin_explainer" = "由裝置循環完整光譜。選擇「自訂色彩」可編輯色彩順序與速度。";
+"cycle.builtin_explainer" = "完整色譜由程式驅動，與預覽同步變色；請保持程式執行。";
 
 /* LightController.swift */
 "status.waiting_for_device" = "正在等待連接 Tartarus V2";
@@ -115,8 +115,8 @@
 "mapping.permissions_card_title" = "權限與啟動";
 "mapping.permissions_request_button" = "授予改鍵權限";
 "mapping.auto_start_toggle" = "啟動後自動嘗試啟用對應";
-"mapping.permissions_hint_primary" = "輔助使用權與輸入監控都只需要 Tartarus Light；舊版 TartarusInput 已不再使用。燈光功能不需要這兩項權限。";
-"mapping.permissions_hint_secondary" = "啟用時可能會彈出管理員授權。停止、拔除或結束會釋放裝置；更換 USB 插槽後需重新選擇。";
+"mapping.permissions_hint_primary" = "Tartarus Light 需要輔助使用權限；若系統要求輸入監控，請同時允許背景輸入服務（local.tartarus.light.input）。燈光不需要這些權限。";
+"mapping.permissions_hint_secondary" = "首次啟用時安裝背景輸入服務並要求管理員密碼，之後啟用、儲存及重新開啟應用程式不需重複輸入。更新服務、解除安裝或撤銷授權後可能需要重新授權。";
 
 "editor.tartarus_source_label" = "TARTARUS 來源";
 "editor.source_key_picker" = "來源按鍵";
@@ -152,11 +152,11 @@
 "status.authorized" = "已授權";
 "status.not_authorized" = "未授權";
 "status.permission_format" = "Tartarus Light · 輔助使用權：%@ · 輸入監控：%@";
-"status.permissions_granted_note" = "輔助使用權與輸入監控都只需要 Tartarus Light。舊版 TartarusInput 已不再使用；管理員密碼只在系統對話框中輸入。";
+"status.permissions_granted_note" = "請在系統設定中允許輔助使用與輸入監控。管理員密碼僅於首次安裝或更新背景服務時由系統對話框要求。";
 "status.bound_not_connected_select" = "綁定裝置未連接，請偵測並選擇裝置。";
 "status.add_binding_first" = "請先新增對應。";
 "status.missing_accessibility" = "缺少輔助使用權限，請先點選授權。";
-"status.waiting_for_admin" = "正在等待 macOS 管理員授權，僅接管所選 Tartarus V2。";
+"status.waiting_for_admin" = "正在連接輸入服務；首次安裝或更新服務時需要管理員授權。";
 "status.start_failed" = "啟動失敗：";
 "status.identifying_tartarus" = "正在識別所選 Tartarus；期間暫停其原始輸入，按停止可復原。";
 "status.press_source_key" = "請按下來源鍵；識別後會自動釋放 Tartarus。";
@@ -184,3 +184,91 @@
 "preview.key_mapped_access" = "Tartarus 按鍵 %1$d，已對應為 %2$@";
 "preview.key_unmapped_access" = "Tartarus 按鍵 %d，尚未對應";
 "preview.accessibility_label" = "Tartarus 按鍵對應預覽";
+
+"macro.enabled" = "連續按鍵巨集";
+
+"macro.hint" = "每次按下執行一次。每步輸入按鍵或快捷鍵，再等待 0–60 秒；停止映射會取消剩餘步驟。";
+
+"macro.delay" = "步驟後等待";
+
+"macro.add" = "新增步驟";
+
+"service.remove" = "解除安裝背景輸入服務…";
+
+"service.removed" = "背景輸入服務已解除安裝，下次啟用映射時需要重新安裝。";
+
+"service.unavailable" = "無法連接背景輸入服務。請檢查系統登入項目中的服務是否停用，或解除安裝後重新安裝。";
+
+"mapping.auto_save_hint" = "自動儲存；有效修改自動套用";
+
+"mapping.auto_saved" = "已自動儲存，按「啟用映射」開始使用。";
+
+"mapping.enable" = "啟用映射";
+
+"mapping.paused" = "鎖定或睡眠期間已暫停，恢復後將自動重新連接。";
+
+"service.needs_installation" = "背景服務需要安裝或更新，請按「啟用映射」完成一次授權。";
+
+"settings.title" = "權限與自動啟動";
+
+"settings.detail" = "檢查改鍵所需權限、輸入服務與登入後自動啟動狀態。";
+
+"settings.refresh" = "重新檢查";
+
+"settings.permissions" = "必要權限";
+
+"settings.accessibility" = "輔助使用 · Tartarus Light";
+
+"settings.input" = "輸入監控 · 背景輸入服務";
+
+"settings.authorize" = "前往授權";
+
+"settings.permissions.note" = "輔助使用用於輸出改鍵；輸入監控以背景服務自身的檢查結果為準。尚未安裝、無法連接或系統無法判斷時會顯示未檢查。燈光不需要這些權限。如需手動加入，請選擇「顯示輸入服務」定位的應用程式。";
+
+"settings.service" = "背景輸入服務";
+
+"settings.service.status" = "服務狀態";
+
+"settings.service.show" = "顯示輸入服務";
+
+"settings.service.install" = "安裝 / 更新服務";
+
+"settings.service.installed" = "輸入服務已安裝，正在檢查狀態。";
+
+"settings.service.note" = "首次安裝或更新服務需要管理員授權。檢查不會接管鍵盤。無法連接時，請確認系統登入項目的背景活動是否停用；映射執行中會透過目前連線檢查。";
+
+"settings.login.status" = "登入後自動開啟程式";
+
+"settings.login.note" = "自動啟動是指登入此使用者後自動開啟應用程式；等待系統批准時尚未啟用。請將應用程式保持在固定位置。";
+
+"settings.mapping.startup.note" = "開啟程式與自動啟用映射為獨立設定；映射仍需要必要權限與已安裝的輸入服務。";
+
+"settings.open" = "檢查權限與登入啟動";
+
+"settings.granted" = "已授權";
+
+"settings.denied" = "未授權";
+
+"settings.unknown" = "尚未檢查 / 無法確定";
+
+"settings.service.missing" = "未安裝";
+
+"settings.service.update" = "已安裝，需要更新";
+
+"settings.service.unavailable" = "已安裝，但暫時無法連接";
+
+"settings.service.ready" = "已連接";
+
+"settings.service.checking" = "檢查中…";
+
+"settings.login.enabled" = "已啟用";
+
+"settings.login.approval" = "等待系統批准，尚未啟用";
+
+"settings.login.disabled" = "已關閉";
+
+"settings.login.unavailable" = "啟動項目尚未就緒，請保持應用程式位置固定";
+
+"settings.login.unknown" = "無法確認登入啟動狀態";
+
+"settings.login.error" = "自動啟動設定失敗：";

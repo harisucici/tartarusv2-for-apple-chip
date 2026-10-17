@@ -75,6 +75,11 @@ struct ContentView: View {
             Picker(NSLocalizedString("cycle.mode_picker", comment: ""),selection:$c.customCycle) {
                 Text(NSLocalizedString("cycle.full_spectrum", comment: "")).tag(false); Text(NSLocalizedString("cycle.custom", comment: "")).tag(true)
             }.pickerStyle(.segmented)
+                HStack {
+                    Text(NSLocalizedString("cycle.duration_label", comment: "")).font(.caption)
+                    Slider(value:$c.cycleSeconds,in:10...60,step:1).accessibilityLabel(NSLocalizedString("cycle.duration_accessibility", comment: ""))
+                    Text(String(format:NSLocalizedString("cycle.seconds_format", comment: ""),Int(c.cycleSeconds))).font(.system(.caption,design:.monospaced)).frame(width:44)
+                }
             if c.customCycle {
                 LinearGradient(colors:c.cycleColors.map(\.color)+(c.cycleColors.first.map { [$0.color] } ?? []),startPoint:.leading,endPoint:.trailing).frame(height:8).clipShape(Capsule())
                 ForEach(Array(c.cycleStops.enumerated()),id:\.element.id) { index,stop in
@@ -87,11 +92,6 @@ struct ContentView: View {
                     }
                 }
                 HStack { Button { c.addCycleColor() } label: { Label(NSLocalizedString("cycle.add_color", comment: ""),systemImage:"plus") }.disabled(c.cycleStops.count >= 8); Spacer(); Text(NSLocalizedString("cycle.hint_range", comment: "")).font(.caption).foregroundStyle(.secondary) }
-                HStack {
-                    Text(NSLocalizedString("cycle.duration_label", comment: "")).font(.caption)
-                    Slider(value:$c.cycleSeconds,in:2...60,step:1).accessibilityLabel(NSLocalizedString("cycle.duration_accessibility", comment: ""))
-                    Text(String(format:NSLocalizedString("cycle.seconds_format", comment: ""),Int(c.cycleSeconds))).font(.system(.caption,design:.monospaced)).frame(width:44)
-                }
                 Text(NSLocalizedString("cycle.custom_explainer", comment: "")).font(.caption).foregroundStyle(.secondary)
             } else {
                 Text(NSLocalizedString("cycle.builtin_explainer", comment: "")).font(.caption).foregroundStyle(.secondary)

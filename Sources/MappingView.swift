@@ -44,7 +44,7 @@ struct MappingView: View {
                                 Text(String(format:NSLocalizedString("mapping.list_count", comment: ""), m.bindings.count)).font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Button { addBinding() } label: { Label(NSLocalizedString("mapping.add_button", comment: ""),systemImage:"plus") }.disabled(busy)
+                            Button { addBinding() } label: { Label(NSLocalizedString("mapping.add_button", comment: ""),systemImage:"plus") }.disabled(m.starting)
                         }
 
                         if let idx = selectedBindingIndex {
@@ -64,10 +64,13 @@ struct MappingView: View {
                     .frame(minWidth: 420, alignment: .leading)
                     .animation(.easeInOut(duration: 0.18), value: selectedBindingIndex)
                 }
-                .disabled(busy)
+                .disabled(m.starting)
 
                 HStack {
-                    Button(NSLocalizedString("mapping.save_button", comment: "")) { m.save() }.disabled(busy)
+                    Text(NSLocalizedString("mapping.auto_save_hint",comment:"")).font(.caption).foregroundStyle(.secondary)
+                    if !busy {
+                        Button(NSLocalizedString("mapping.enable",comment:"")) { m.start() }
+                    }
                     Button(NSLocalizedString("mapping.stop_resume_button", comment: "")) { m.stop() }.keyboardShortcut(.escape,modifiers:[])
                     if m.starting { ProgressView().controlSize(.small) }
                     Spacer()
@@ -80,14 +83,8 @@ struct MappingView: View {
 
                 StatusStrip(text:m.status,active:m.running)
 
-                ControlCard(title:NSLocalizedString("mapping.permissions_card_title", comment: "")) {
-                    HStack {
-                        Button(NSLocalizedString("mapping.permissions_request_button", comment: "")) { m.requestPermissions() }.disabled(busy)
-                        Text(m.permissionStatus).font(.caption).foregroundStyle(.secondary)
-                    }
-                    Toggle(NSLocalizedString("mapping.auto_start_toggle", comment: ""),isOn:$m.autoStart).disabled(busy)
-                    Text(NSLocalizedString("mapping.permissions_hint_primary", comment: "")).font(.caption).foregroundStyle(RazerTheme.green)
-                    Text(NSLocalizedString("mapping.permissions_hint_secondary", comment: "")).font(.caption).foregroundStyle(.secondary)
+                Button { m.selectedTab = 2 } label: {
+                    Label(NSLocalizedString("settings.open",comment:""),systemImage:"gearshape")
                 }
             }.padding(28)
         }
@@ -151,7 +148,8 @@ struct MappingPreview: View {
         // Row 2
         ("⇪", 57), ("A", 4), ("S", 22), ("D", 7), ("F", 9),
         // Row 3
-        ("⇧", 225), ("Z", 29), ("X", 27), ("C", 6), ("␣", 44)
+        ("⇧", 225), ("Z", 29), ("X", 27), ("C", 6), ("␣", 44),
+        ("⌥", 226), ("↑", 82), ("↓", 81), ("←", 80), ("→", 79)
     ]
 
     var body: some View {
@@ -174,6 +172,8 @@ struct MappingPreview: View {
             }
             .rotationEffect(.degrees(-6))
             .padding(.vertical, 6)
+
+            HStack(spacing:6) { ForEach(20..<25) { keyCell(index:$0) } }
 
             // Thumb wheel
             RoundedRectangle(cornerRadius: 28)
@@ -292,6 +292,8 @@ struct BindingEditor: View {
                 Button(action:remove) { Image(systemName:"trash") }.help(NSLocalizedString("editor.delete_mapping_help", comment: ""))
             }
             Rectangle().fill(RazerTheme.border).frame(height:1)
+            Toggle(NSLocalizedString("macro.enabled", comment:""),isOn:Binding(get:{binding.isMacro},set:{binding.macro = $0 ? [MacroStep()] : nil}))
+            if binding.isMacro { macroEditor } else {
             HStack(spacing:12) {
                 Text(NSLocalizedString("editor.modifiers_label", comment: "")).font(.caption).foregroundStyle(.secondary).frame(width:44,alignment:.leading)
                 modifier(NSLocalizedString("editor.modifier.command", comment: ""),value:$binding.command)
@@ -329,7 +331,38 @@ struct BindingEditor: View {
                     Text(NSLocalizedString("editor.hold_release_hint", comment: "")).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
                 }
             }
+            }
         }.padding(18).background(RazerTheme.panel,in:RoundedRectangle(cornerRadius:10)).overlay(RoundedRectangle(cornerRadius:10).stroke(RazerTheme.border))
+    }
+    var macroEditor: some View {
+        VStack(alignment:.leading,spacing:10) {
+            Text(NSLocalizedString("macro.hint",comment:"")).font(.caption).foregroundStyle(.secondary)
+            ForEach(Array((binding.macro ?? []).enumerated()),id:\.element.id) { index, step in
+                VStack(alignment:.leading,spacing:6) {
+                    HStack {
+                        Text("\(index+1).")
+                        keyPicker("Key",selection:macroBinding(step.id,\.usage,fallback:4))
+                        Button { if let i = binding.macro?.firstIndex(where:{$0.id == step.id}), i > 0 { binding.macro?.swapAt(i,i-1) } } label:{ Image(systemName:"arrow.up") }.disabled(index == 0)
+                        Button { binding.macro?.removeAll { $0.id == step.id } } label:{ Image(systemName:"minus") }.disabled((binding.macro?.count ?? 0) <= 1)
+                    }
+                    HStack {
+                        modifier("⌘",value:macroBinding(step.id,\.command,fallback:false))
+                        modifier("⇧",value:macroBinding(step.id,\.shift,fallback:false))
+                        modifier("⌥",value:macroBinding(step.id,\.option,fallback:false))
+                        modifier("⌃",value:macroBinding(step.id,\.control,fallback:false))
+                        Text(NSLocalizedString("macro.delay",comment:""))
+                        TextField("s",value:macroBinding(step.id,\.delay,fallback:0.1),format:.number).frame(width:60)
+                        Text("s")
+                    }
+                }
+            }
+            Button(NSLocalizedString("macro.add",comment:"")) { binding.macro?.append(MacroStep()) }.disabled((binding.macro?.count ?? 0) >= 100)
+        }
+    }
+    func macroBinding<T>(_ id:UUID,_ keyPath:WritableKeyPath<MacroStep,T>,fallback:T) -> Binding<T> {
+        Binding(get:{binding.macro?.first(where:{$0.id == id})?[keyPath:keyPath] ?? fallback},set:{value in
+            if let i = binding.macro?.firstIndex(where:{$0.id == id}) { binding.macro?[i][keyPath:keyPath] = value }
+        })
     }
     func keyPicker(_ title:String,selection:Binding<Int>) -> some View {
         Picker(title,selection:selection) { ForEach(keys) { Text($0.name).tag($0.usage) } }.labelsHidden().frame(width:155)

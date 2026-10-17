@@ -70,7 +70,7 @@
 "cycle.duration_accessibility" = "Cycle duration";
 "cycle.seconds_format" = "%d s";
 "cycle.custom_explainer" = "The custom cycle is driven by the app; when it quits, the last color stays.";
-"cycle.builtin_explainer" = "The device cycles through the full spectrum. Choose “Custom Colors” to edit the order and speed.";
+"cycle.builtin_explainer" = "The app drives the full spectrum and preview together. Keep the app running.";
 
 /* LightController.swift */
 "status.waiting_for_device" = "Waiting for Tartarus V2 to connect";
@@ -115,8 +115,8 @@
 "mapping.permissions_card_title" = "Permissions & Launch";
 "mapping.permissions_request_button" = "Grant Remap Permissions";
 "mapping.auto_start_toggle" = "Try enabling mappings automatically on launch";
-"mapping.permissions_hint_primary" = "Both Accessibility and Input Monitoring are needed by Tartarus Light only. The old TartarusInput is no longer used. Lighting does not need either permission.";
-"mapping.permissions_hint_secondary" = "Enabling may prompt for admin authorization. Stop, unplug, or quit to release the device; a different USB port requires reselecting.";
+"mapping.permissions_hint_primary" = "Tartarus Light needs Accessibility. If macOS requests Input Monitoring for the installed service (local.tartarus.light.input), allow it too. Lighting needs neither permission.";
+"mapping.permissions_hint_secondary" = "First activation installs a background service with administrator approval. Later activations, saves, and app restarts reuse it. Service updates, removal, or revoked approval may require authorization again.";
 
 "editor.tartarus_source_label" = "TARTARUS SOURCE";
 "editor.source_key_picker" = "Source Key";
@@ -152,11 +152,11 @@
 "status.authorized" = "Granted";
 "status.not_authorized" = "Not granted";
 "status.permission_format" = "Tartarus Light · Accessibility: %@ · Input Monitoring: %@";
-"status.permissions_granted_note" = "Both Accessibility and Input Monitoring are needed by Tartarus Light only. The old TartarusInput is no longer used; the admin password is entered only in the system dialog.";
+"status.permissions_granted_note" = "Allow Accessibility and Input Monitoring in System Settings. Only first installation or service updates request an administrator password through the system dialog.";
 "status.bound_not_connected_select" = "Bound device not connected. Detect and select a device.";
 "status.add_binding_first" = "Add a mapping first.";
 "status.missing_accessibility" = "Missing Accessibility permission. Tap to authorize first.";
-"status.waiting_for_admin" = "Waiting for macOS admin approval; only the selected Tartarus V2 is taken over.";
+"status.waiting_for_admin" = "Connecting to input service; first installation or service updates require administrator approval.";
 "status.start_failed" = "Start failed: ";
 "status.identifying_tartarus" = "Identifying the selected Tartarus; its raw input is paused during this. Press Stop to restore.";
 "status.press_source_key" = "Press the source key. Tartarus is released automatically after identification.";
@@ -184,3 +184,91 @@
 "preview.key_mapped_access" = "Tartarus key %1$d, mapped to %2$@";
 "preview.key_unmapped_access" = "Tartarus key %d, not mapped yet";
 "preview.accessibility_label" = "Tartarus key mapping preview";
+
+"macro.enabled" = "Sequential macro";
+
+"macro.hint" = "Runs once per press. Each step taps a key or shortcut, then waits 0–60 seconds. Stop cancels pending steps.";
+
+"macro.delay" = "Wait after step";
+
+"macro.add" = "Add step";
+
+"service.remove" = "Uninstall background input service…";
+
+"service.removed" = "Background input service removed. Enabling mapping again will reinstall it.";
+
+"service.unavailable" = "Cannot connect to the input service. Check whether it is disabled in Login Items, or uninstall and reinstall it.";
+
+"mapping.auto_save_hint" = "Changes save automatically; valid edits apply automatically";
+
+"mapping.auto_saved" = "Saved automatically. Click Enable mapping to begin.";
+
+"mapping.enable" = "Enable mapping";
+
+"mapping.paused" = "Paused while locked or asleep; mapping reconnects on return.";
+
+"service.needs_installation" = "The input service needs installation or an update. Click Enable mapping to authorize once.";
+
+"settings.title" = "Permissions & Startup";
+
+"settings.detail" = "Check remapping permissions, the input service, and launch at login.";
+
+"settings.refresh" = "Check again";
+
+"settings.permissions" = "Required permissions";
+
+"settings.accessibility" = "Accessibility · Tartarus Light";
+
+"settings.input" = "Input Monitoring · Input service";
+
+"settings.authorize" = "Authorize";
+
+"settings.permissions.note" = "Accessibility allows key output. Input Monitoring is checked by the service itself. Missing, unreachable, or indeterminate access is shown as unknown. Lighting needs neither permission. If you need to add the service manually, locate its app with Show input service.";
+
+"settings.service" = "Background input service";
+
+"settings.service.status" = "Service status";
+
+"settings.service.show" = "Show input service";
+
+"settings.service.install" = "Install / update service";
+
+"settings.service.installed" = "Input service installed; checking its status.";
+
+"settings.service.note" = "First installation or service updates require administrator approval. Checks do not capture the keyboard. If unavailable, check background activity in Login Items. Active mapping uses its existing connection for checks.";
+
+"settings.login.status" = "Launch app at login";
+
+"settings.login.note" = "Launch at startup means after this user logs in. Pending approval is not enabled yet. Keep the app at a fixed location.";
+
+"settings.mapping.startup.note" = "Launching the app and enabling mapping automatically are separate settings. Mapping still needs its permissions and the installed input service.";
+
+"settings.open" = "Check permissions and login startup";
+
+"settings.granted" = "Granted";
+
+"settings.denied" = "Not granted";
+
+"settings.unknown" = "Not checked / unknown";
+
+"settings.service.missing" = "Not installed";
+
+"settings.service.update" = "Installed; update required";
+
+"settings.service.unavailable" = "Installed; currently unreachable";
+
+"settings.service.ready" = "Connected";
+
+"settings.service.checking" = "Checking…";
+
+"settings.login.enabled" = "Enabled";
+
+"settings.login.approval" = "Awaiting system approval; not enabled yet";
+
+"settings.login.disabled" = "Disabled";
+
+"settings.login.unavailable" = "Login item unavailable; keep the app at a fixed location";
+
+"settings.login.unknown" = "Login startup status is unknown";
+
+"settings.login.error" = "Could not update login startup: ";

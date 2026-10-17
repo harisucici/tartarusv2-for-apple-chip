@@ -1,8 +1,104 @@
 import Foundation
 import ApplicationServices
 import Darwin
+import ServiceManagement
 
 func runMappingChecks() {
+    precondition(LoginLaunchState(.enabled) == .enabled)
+    precondition(LoginLaunchState(.requiresApproval) == .approval)
+    precondition(LoginLaunchState(.requiresApproval).requested)
+    precondition(LoginLaunchState(.requiresApproval) != .enabled)
+    precondition(!LoginLaunchState(.notRegistered).requested)
+    precondition(LoginLaunchState(.notFound) == .unavailable)
+    precondition(PermissionCheck(line:"access granted") == .granted)
+    precondition(PermissionCheck(line:"access denied") == .denied)
+    precondition(PermissionCheck(line:"access unknown") == .unknown)
+    precondition(PermissionCheck(line:"unexpected") == .unknown)
+    let inspection = MappingController(loadProfile:false)
+    inspection.receive("access denied")
+    precondition(inspection.serviceInputAccess == .denied && !inspection.running)
+    inspection.receive("access granted")
+    precondition(inspection.serviceInputAccess == .granted && !inspection.running)
+    print("PASS: login approval states and independent service input-permission reports. No settings changed.")
+    var lifecycle = MappingResumeState()
+    lifecycle.enabled = true
+    lifecycle.pauses.insert(.lock); lifecycle.pauses.insert(.sleep)
+    precondition(!lifecycle.shouldRun)
+    lifecycle.pauses.remove(.sleep)
+    precondition(!lifecycle.shouldRun) // A wake while still locked cannot resume input.
+    lifecycle.pauses.remove(.lock)
+    precondition(lifecycle.shouldRun)
+    lifecycle.pauses.insert(.session); lifecycle.enabled = false
+    lifecycle.pauses.remove(.session)
+    precondition(!lifecycle.shouldRun) // Manual stop survives unlock/user switching.
+
+    let folder = URL(fileURLWithPath:"/private/tmp").appendingPathComponent("tartarus-autosave-"+UUID().uuidString)
+    let profileURL = folder.appendingPathComponent("mapping.json")
+    defer { try? FileManager.default.removeItem(at:folder) }
+    let autosave = MappingController(loadProfile:false,profileURL:profileURL,autoSave:true)
+    var savedEvents: [KeyOutput] = []
+    var scheduledTasks: [DispatchWorkItem] = []
+    autosave.scheduleTask = { delay,task in
+        precondition(delay == 0.4 || delay == 0.75)
+        scheduledTasks.append(task)
+    }
+    func flushScheduled() {
+        let tasks = scheduledTasks; scheduledTasks.removeAll()
+        for task in tasks { task.perform() }
+    }
+    autosave.eventSink = { savedEvents.append($0) }
+    autosave.selectedLocation = 17825792
+    autosave.bindings = [KeyBinding(source:30,target:4)]
+    autosave.bindings[0].target = 5 // Only the last edit in the debounce window persists.
+    flushScheduled()
+    let saved = try! Data(contentsOf:profileURL)
+    precondition(try! JSONDecoder().decode(MappingProfile.self,from:saved).bindings.first?.target == 5)
+    precondition(!autosave.running && !autosave.starting)
+    autosave.running = true
+    autosave.bindings[0].target = 6
+    flushScheduled()
+    autosave.process(usage:30,down:true,source:"held")
+    precondition(savedEvents.last?.code == 8 && savedEvents.last?.down == true)
+    autosave.bindings[0].target = 999
+    flushScheduled()
+    precondition(try! JSONDecoder().decode(MappingProfile.self,from:Data(contentsOf:profileURL)).bindings.first?.target == 6)
+    autosave.process(usage:30,down:false,source:"held")
+    autosave.process(usage:30,down:true,source:"held")
+    precondition(savedEvents.last?.code == 8 && savedEvents.last?.down == true)
+    autosave.suspend(.lock)
+    precondition(!autosave.running && savedEvents.last?.down == false)
+    autosave.resume(.lock) // Queued reconnect must be cancelled by an explicit stop.
+    autosave.stop()
+    flushScheduled()
+    precondition(!autosave.running && !autosave.starting)
+    print("PASS: debounced mapping autosave, live apply, invalid edit isolation, lock releases, nested pause reasons and manual stop cancellation. No service installed or OS input posted.")
+    let macroController = MappingController(loadProfile:false)
+    var macroEvents: [KeyOutput] = []
+    macroController.eventSink = { macroEvents.append($0) }
+    macroController.running = true
+    var macro = KeyBinding(source:226,target:4)
+    macro.macro = [MacroStep(usage:4,delay:0.5),MacroStep(usage:5,delay:0)]
+    macroController.bindings = [macro]
+    macroController.process(usage:226,down:true,source:"test")
+    precondition(macroEvents.count == 1 && macroEvents[0].down)
+    let base = ProcessInfo.processInfo.systemUptime
+    macroController.advanceMacros(now:base+0.04)
+    precondition(macroEvents.count == 2 && !macroEvents[1].down)
+    macroController.advanceMacros(now:base+0.2)
+    precondition(macroEvents.count == 2)
+    macroController.advanceMacros(now:base+0.6)
+    precondition(macroEvents.count == 3 && macroEvents[2].code == 11)
+    macroController.stop()
+    precondition(macroEvents.count == 4 && !macroEvents[3].down)
+    macroController.advanceMacros(now:base+20)
+    precondition(macroEvents.count == 4)
+    precondition(try! JSONDecoder().decode(KeyBinding.self,from:JSONEncoder().encode(macro)).macro?.count == 2)
+    var invalidMacro = macro
+    invalidMacro.macro = [MacroStep(delay:-1)]
+    precondition(!invalidMacro.valid)
+    invalidMacro.macro = []
+    precondition(!invalidMacro.valid)
+    precondition(Set(MappingPreview.keyLayout.map(\.usage)).isSuperset(of:[226,79,80,81,82]))
     precondition(Set(keys.map(\.usage)).count == keys.count)
     let e = MappingEngine()
     let bindings = [KeyBinding(source:30,target:6,command:true),KeyBinding(source:31,target:6)]
@@ -86,5 +182,20 @@ func runMappingChecks() {
     var buffer = [UInt8](repeating:0,count:16)
     let count = recv(pair[0],&buffer,buffer.count,0)
     precondition(count == 6 && String(bytes:buffer.prefix(count),encoding:.utf8) == "ready\n")
+    precondition(InputService.location(from:"open 1 17825792") == loc)
+    for invalid in ["open 1 0","open 2 17825792","open 1 -1","open 1 4294967296","exec 1 4","open 1 4 extra"] {
+        precondition(InputService.location(from:invalid) == nil)
+    }
+    precondition(InputService.ownRequirement() != nil)
+    precondition(!InputService.installedMatchesApp(at:"/bin/ls"))
+    precondition(!InputService.installedMatchesApp(at:"/nonexistent/service"))
+    precondition(InputService.installedMatchesApp(at:Bundle.main.executableURL!.path))
+    precondition(InputService.trustedPeer(pair[0]))
+    precondition(sendLine(pair[1],"open 1 17825792"))
+    precondition(InputService.request(pair[0]) == "open 1 17825792")
+    let daemon = try! PropertyListSerialization.propertyList(from:InputService.plistData,format:nil) as! [String:Any]
+    precondition(daemon["ProgramArguments"] as? [String] == [InputService.executable,InputService.flag])
+    precondition(daemon["RunAtLoad"] as? Bool == true && daemon["KeepAlive"] as? Bool == true)
+    print("PASS: persistent service protocol validation, code signature checks, bounded IPC and launchd configuration. No service installed.")
     print("PASS: mapping chord order, duplicate callbacks, overlapping destinations, repeat/stop releases, inactive controller, device isolation and configuration. No OS input posted.")
 }

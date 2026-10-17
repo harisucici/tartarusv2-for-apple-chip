@@ -70,7 +70,7 @@
 "cycle.duration_accessibility" = "循環の長さ";
 "cycle.seconds_format" = "%d 秒";
 "cycle.custom_explainer" = "カスタム循環はアプリが駆動します。終了時は最後の色が残ります。";
-"cycle.builtin_explainer" = "デバイスがフルスペクトルを循環します。「カスタムカラー」を選ぶと順番と速度を編集できます。";
+"cycle.builtin_explainer" = "アプリがフルスペクトルとプレビューを同期して制御します。アプリを起動したままにしてください。";
 
 /* LightController.swift */
 "status.waiting_for_device" = "Tartarus V2 の接続を待っています";
@@ -115,8 +115,8 @@
 "mapping.permissions_card_title" = "権限と起動";
 "mapping.permissions_request_button" = "割り当ての権限を要求";
 "mapping.auto_start_toggle" = "起動後に割り当ての有効化を試みる";
-"mapping.permissions_hint_primary" = "アクセシビリティと入力監視のどちらも Tartarus Light だけで使います。旧 TartarusInput は使いません。ライティングにこれら権限は不要です。";
-"mapping.permissions_hint_secondary" = "有効化時に管理者の承認を求めることがあります。停止・切断・終了でデバイスを解放します。USB ポートを変えた場合は選び直してください。";
+"mapping.permissions_hint_primary" = "Tartarus Light にアクセシビリティを許可してください。入力監視を求められた場合は、入力サービス（local.tartarus.light.input）にも許可してください。ライティングには不要です。";
+"mapping.permissions_hint_secondary" = "初回の有効化時に管理者認証で入力サービスをインストールします。その後の有効化・保存・アプリ再起動では再入力不要です。サービス更新・削除・承認の取り消し後は再認証が必要な場合があります。";
 
 "editor.tartarus_source_label" = "TARTARUS 入力元";
 "editor.source_key_picker" = "入力元キー";
@@ -152,11 +152,11 @@
 "status.authorized" = "許可済み";
 "status.not_authorized" = "未許可";
 "status.permission_format" = "Tartarus Light · アクセシビリティ: %@ · 入力監視: %@";
-"status.permissions_granted_note" = "アクセシビリティと入力監視は Tartarus Light だけで使います。旧 TartarusInput は使いません。管理者パスワードはシステムダイアログ内でのみ入力します。";
+"status.permissions_granted_note" = "システム設定でアクセシビリティと入力監視を許可してください。管理者パスワードは初回インストールやサービス更新時にシステムダイアログでのみ入力します。";
 "status.bound_not_connected_select" = "割り当て済みデバイスは未接続です。検出してデバイスを選択してください。";
 "status.add_binding_first" = "先に割り当てを追加してください。";
 "status.missing_accessibility" = "アクセシビリティ権限がありません。まず承認してください。";
-"status.waiting_for_admin" = "macOS の管理者承認を待っています。選択した Tartarus V2 のみを引き受けます。";
+"status.waiting_for_admin" = "入力サービスに接続中です。初回インストールやサービス更新時には管理者認証が必要です。";
 "status.start_failed" = "起動に失敗しました: ";
 "status.identifying_tartarus" = "選択した Tartarus を識別中です。元の入力は一時的に止まります。「停止」で復元します。";
 "status.press_source_key" = "入力元キーを押してください。識別後に Tartarus を自動的に解放します。";
@@ -184,3 +184,91 @@
 "preview.key_mapped_access" = "Tartarus キー %1$d、%2$@ に割り当て済み";
 "preview.key_unmapped_access" = "Tartarus キー %d、未割り当て";
 "preview.accessibility_label" = "Tartarus のキー割り当てプレビュー";
+
+"macro.enabled" = "連続キーマクロ";
+
+"macro.hint" = "押すたびに1回実行します。各ステップでキーを入力し、0〜60秒待機します。停止すると残りをキャンセルします。";
+
+"macro.delay" = "入力後の待機";
+
+"macro.add" = "ステップを追加";
+
+"service.remove" = "バックグラウンド入力サービスを削除…";
+
+"service.removed" = "入力サービスを削除しました。次回の割り当て有効化時に再インストールします。";
+
+"service.unavailable" = "入力サービスに接続できません。ログイン項目で無効になっていないか確認するか、削除して再インストールしてください。";
+
+"mapping.auto_save_hint" = "変更は自動保存され、有効な設定は自動適用されます";
+
+"mapping.auto_saved" = "自動保存しました。「割り当てを有効化」で開始できます。";
+
+"mapping.enable" = "割り当てを有効化";
+
+"mapping.paused" = "ロック・スリープ中は一時停止し、復帰後に自動で再接続します。";
+
+"service.needs_installation" = "入力サービスのインストールまたは更新が必要です。「割り当てを有効化」で一度認証してください。";
+
+"settings.title" = "権限と自動起動";
+
+"settings.detail" = "キー割り当てに必要な権限、入力サービス、ログイン時の自動起動を確認します。";
+
+"settings.refresh" = "再確認";
+
+"settings.permissions" = "必要な権限";
+
+"settings.accessibility" = "アクセシビリティ · Tartarus Light";
+
+"settings.input" = "入力監視 · 入力サービス";
+
+"settings.authorize" = "権限を設定";
+
+"settings.permissions.note" = "アクセシビリティはキー出力に使用します。入力監視はサービス自身の検査結果を表示します。未インストール・接続不可・判定不能の場合は未確認と表示します。ライティングには不要です。手動追加が必要な場合は「入力サービスを表示」でアプリの場所を確認してください。";
+
+"settings.service" = "バックグラウンド入力サービス";
+
+"settings.service.status" = "サービスの状態";
+
+"settings.service.show" = "入力サービスを表示";
+
+"settings.service.install" = "サービスをインストール / 更新";
+
+"settings.service.installed" = "入力サービスをインストールしました。状態を確認中です。";
+
+"settings.service.note" = "初回インストールや更新には管理者認証が必要です。確認時にキーボードを占有しません。接続できない場合はログイン項目のバックグラウンド動作を確認してください。割り当て中は既存の接続で確認します。";
+
+"settings.login.status" = "ログイン時にアプリを起動";
+
+"settings.login.note" = "自動起動は、このユーザーのログイン後にアプリを開く設定です。承認待ちはまだ有効ではありません。アプリの場所を固定してください。";
+
+"settings.mapping.startup.note" = "アプリの起動と割り当ての自動有効化は別の設定です。割り当てには権限と入力サービスが必要です。";
+
+"settings.open" = "権限とログイン時の起動を確認";
+
+"settings.granted" = "許可済み";
+
+"settings.denied" = "未許可";
+
+"settings.unknown" = "未確認 / 判定不能";
+
+"settings.service.missing" = "未インストール";
+
+"settings.service.update" = "インストール済み・更新が必要";
+
+"settings.service.unavailable" = "インストール済み・現在接続できません";
+
+"settings.service.ready" = "接続済み";
+
+"settings.service.checking" = "確認中…";
+
+"settings.login.enabled" = "有効";
+
+"settings.login.approval" = "システムの承認待ち・まだ無効です";
+
+"settings.login.disabled" = "無効";
+
+"settings.login.unavailable" = "ログイン項目が未準備です。アプリの場所を固定してください";
+
+"settings.login.unknown" = "ログイン時の起動状態を確認できません";
+
+"settings.login.error" = "自動起動の設定に失敗しました: ";
