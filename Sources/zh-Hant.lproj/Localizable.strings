@@ -1,0 +1,186 @@
+/* Main.swift */
+"nav.lights" = "燈光效果";
+"nav.mapping" = "按鍵對應";
+"sidebar.tartarus_v2" = "TARTARUS V2";
+"sidebar.version" = "本機裝置控制 · %@";
+
+"menu.show" = "顯示 Tartarus Light";
+"menu.language" = "語言";
+"menu.about" = "關於我們";
+"menu.quit" = "結束";
+
+"lang.zh-Hans" = "简体中文";
+"lang.zh-Hant" = "繁體中文";
+"lang.en" = "English";
+"lang.ja" = "日本語";
+
+"sidebar.language_label" = "語言選擇";
+
+"quit.confirm.title" = "確認結束";
+"quit.confirm.message" = "確定要結束 Tartarus Light 嗎？";
+"quit.confirm.cancel" = "取消";
+"quit.confirm.quit" = "結束";
+
+"effect.off" = "關閉";
+"effect.solid" = "固定色彩";
+"effect.spectrum" = "光譜循環";
+
+"hw.please_select_device_and_color" = "請選擇已連接的裝置與有效的色彩";
+"hw.device_disconnected_waiting" = "裝置已斷線，正在等待重新連接";
+"hw.device_acknowledged" = "裝置已確認 · %@";
+"hw.usb_not_acknowledged" = "USB 燈光未確認：%@，裝置狀態 %d，回應長度 %d。";
+
+/* LightView.swift */
+"lights.eyebrow" = "CHROMA STUDIO";
+"lights.title" = "讓色彩隨你所想";
+"lights.detail" = "調整立即生效並自動儲存。啟動與裝置重新連接時會自動還原燈光。";
+
+"device.card_title" = "裝置";
+"device.connected" = "已連接";
+"device.disconnected" = "未連接";
+"device.picker_label" = "目標裝置";
+"device.choose" = "請選擇裝置";
+"device.tartarus_v2" = "Tartarus V2 · %@";
+"device.bound_not_connected" = "綁定裝置未連接";
+"device.rescan_help" = "重新偵測裝置";
+"device.detect_button" = "偵測裝置";
+
+"lights.card_title" = "燈光效果";
+"lights.auto_apply_caption" = "自動套用";
+"lights.off_hint" = "關閉所選裝置的背光。";
+
+"preview.label" = "即時預覽";
+
+"startup.card_title" = "啟動設定";
+"startup.open_at_login" = "登入時自動開啟程式";
+"startup.open_settings" = "登入項目設定";
+
+"solid.color_picker" = "背光色彩";
+"solid.white" = "白色";
+
+"cycle.mode_picker" = "循環模式";
+"cycle.full_spectrum" = "完整光譜";
+"cycle.custom" = "自訂色彩";
+"cycle.color_n" = "色彩 %d";
+"cycle.move_earlier_help" = "往前移";
+"cycle.remove_help" = "刪除色彩";
+"cycle.add_color" = "新增色彩";
+"cycle.hint_range" = "2–8 種色彩 · 平順循環";
+"cycle.duration_label" = "一輪時長";
+"cycle.duration_accessibility" = "循環時長";
+"cycle.seconds_format" = "%d 秒";
+"cycle.custom_explainer" = "自訂循環由程式即時驅動，結束時會停留在最後的色彩。";
+"cycle.builtin_explainer" = "由裝置循環完整光譜。選擇「自訂色彩」可編輯色彩順序與速度。";
+
+/* LightController.swift */
+"status.waiting_for_device" = "正在等待連接 Tartarus V2";
+"status.auto_save_failed" = "自動儲存失敗：";
+"status.invalid_config" = "燈光設定無效，未傳送";
+"status.config_saved_waiting_device" = "設定已儲存 · 正在等待所選裝置連接";
+"status.device_disconnected_resume" = "裝置已斷線 · 重新連接後自動還原燈光";
+"status.custom_cycle_running" = "自訂循環執行中 · 自動儲存並即時套用";
+"status.saved_and_applied" = "已自動儲存並套用 · %@";
+"status.retry_after_change" = "%@ 變更設定或重新連接裝置後再試。";
+
+/* MappingView.swift */
+"mapping.eyebrow" = "KEY ASSIGNMENTS";
+"mapping.title" = "一鍵，更多操作";
+"mapping.detail" = "為 Tartarus 設定單鍵或組合鍵。僅對應所選裝置，一般鍵盤不受影響。";
+
+"mapping.device_card_title" = "目標裝置";
+"mapping.device_running" = "對應執行中";
+"mapping.device_ready" = "準備設定";
+"mapping.device_picker_label" = "目標裝置";
+"mapping.device_choose" = "請選擇裝置";
+"mapping.device_tartarus_v2" = "Tartarus V2 · USB %@";
+"mapping.device_bound_not_connected" = "綁定裝置未連接";
+"mapping.detect_button" = "偵測裝置";
+"mapping.identify_button" = "識別按鍵";
+"mapping.identify_help" = "由 Tartarus Light 輸入模式讀取，可能需要管理員確認；識別期間會暫時接管所選裝置。";
+
+"mapping.list_title" = "對應清單";
+"mapping.list_count" = "%d 項";
+"mapping.add_button" = "新增對應";
+"mapping.empty_hint" = "新增對應，例如 1 → ⌘⇧C，或 2 → C + V。";
+
+"mapping.save_button" = "儲存對應";
+"mapping.enable_button" = "授權並啟用改鍵";
+"mapping.stop_resume_button" = "停止 / 復原";
+
+"mapping.test_card_title" = "測試區域";
+"mapping.test_card_caption" = "點選後按下實體按鍵";
+"mapping.test_placeholder" = "在此測試 Tartarus 與一般鍵盤的輸出";
+"mapping.test_hint" = "組合鍵會執行對應的快捷操作；例如 ⌘A 會全選此處文字。";
+
+"mapping.permissions_card_title" = "權限與啟動";
+"mapping.permissions_request_button" = "授予改鍵權限";
+"mapping.auto_start_toggle" = "啟動後自動嘗試啟用對應";
+"mapping.permissions_hint_primary" = "輔助使用權與輸入監控都只需要 Tartarus Light；舊版 TartarusInput 已不再使用。燈光功能不需要這兩項權限。";
+"mapping.permissions_hint_secondary" = "啟用時可能會彈出管理員授權。停止、拔除或結束會釋放裝置；更換 USB 插槽後需重新選擇。";
+
+"editor.tartarus_source_label" = "TARTARUS 來源";
+"editor.source_key_picker" = "來源按鍵";
+"editor.learn_source_button" = "識別來源";
+"editor.learn_source_help" = "透過 Tartarus Light 輸入模式識別，可能需要管理員確認；按下來源鍵後會自動釋放 Tartarus。";
+"editor.output_combo_label" = "輸出組合";
+"editor.delete_mapping_help" = "刪除對應";
+"editor.modifiers_label" = "修飾鍵";
+"editor.modifier.command" = "⌘ Command";
+"editor.modifier.shift" = "⇧ Shift";
+"editor.modifier.option" = "⌥ Option";
+"editor.modifier.control" = "⌃ Control";
+"editor.target_key_label" = "目標鍵";
+"editor.target_key_picker" = "目標按鍵";
+"editor.primary_key_label" = "主鍵";
+"editor.extra_target_label" = "額外目標鍵 %d";
+"editor.delete_target_key_help" = "刪除目標鍵";
+"editor.add_simultaneous_key" = "新增同時按下的鍵";
+"editor.shortcuts_menu" = "快捷範本";
+"editor.preset.copy" = "複製 · ⌘C";
+"editor.preset.paste" = "貼上 · ⌘V";
+"editor.preset.screenshot" = "截圖 · ⌘⇧4";
+"editor.preset.plain" = "一般按鍵";
+"editor.hold_release_hint" = "按住來源時一起按下\n放開來源時一起放開";
+
+/* MappingController.swift */
+"status.waiting_for_key" = "正在等待裝置按鍵";
+"status.initial_mapping_only" = "僅對選中 USB 位置的 Tartarus V2 改鍵。";
+"status.mapping_saved" = "對應與目標 USB 位置已儲存；燈光設定獨立儲存。";
+"status.save_failed" = "儲存失敗：";
+"status.duplicate_source" = "同一個來源鍵只能有一項對應，請刪除重複項目。";
+"status.invalid_combo" = "每項組合對應需要 1–4 個不同的有效目標鍵。";
+"status.authorized" = "已授權";
+"status.not_authorized" = "未授權";
+"status.permission_format" = "Tartarus Light · 輔助使用權：%@ · 輸入監控：%@";
+"status.permissions_granted_note" = "輔助使用權與輸入監控都只需要 Tartarus Light。舊版 TartarusInput 已不再使用；管理員密碼只在系統對話框中輸入。";
+"status.bound_not_connected_select" = "綁定裝置未連接，請偵測並選擇裝置。";
+"status.add_binding_first" = "請先新增對應。";
+"status.missing_accessibility" = "缺少輔助使用權限，請先點選授權。";
+"status.waiting_for_admin" = "正在等待 macOS 管理員授權，僅接管所選 Tartarus V2。";
+"status.start_failed" = "啟動失敗：";
+"status.identifying_tartarus" = "正在識別所選 Tartarus；期間暫停其原始輸入，按停止可復原。";
+"status.press_source_key" = "請按下來源鍵；識別後會自動釋放 Tartarus。";
+"status.mapping_enabled" = "對應已啟用，僅 USB %@；其他裝置不做改鍵。";
+"status.accessibility_revoked" = "輔助使用權授權已失效，已停止對應。";
+"status.helper_disconnected" = "輔助行程已斷線，已停止對應。";
+"status.input_monitor_hint" = "。輸入監控請允許目前的 Tartarus Light；舊版 TartarusInput 授權不適用於新版。";
+"status.helper_closed" = "輔助行程已結束，裝置輸入已復原。";
+"status.stopped_input_restored" = "已停止，原始裝置輸入已復原。";
+"status.unknown_key" = "未知鍵";
+"status.select_connected_device" = "請選擇已連接裝置。";
+"status.identify_waiting_admin" = "由 Tartarus Light 輸入模式識別按鍵，正在等待管理員授權。";
+"status.identify_start_failed" = "識別啟動失敗：";
+"status.source_identified" = "已識別來源：%@；儲存後再啟用對應。";
+"status.last_key_format" = "%@ · HID %d";
+"status.device_usb_format" = "僅 USB %@";
+
+/* MappingPreview */
+"mapping.selected_title" = "選中項目";
+"mapping.select_key_hint" = "點選已對應的按鍵以進行編輯。";
+"mapping.select_key_subhint" = "或點選空白按鍵以新增對應。";
+"preview.mapped_count_format" = "已對應 %d / %d 個按鍵";
+"preview.key_mapped_help" = "按鍵 %1$d：%2$@";
+"preview.key_unmapped_help" = "按鍵 %d（未對應，點一下以新增）";
+"preview.key_mapped_access" = "Tartarus 按鍵 %1$d，已對應為 %2$@";
+"preview.key_unmapped_access" = "Tartarus 按鍵 %d，尚未對應";
+"preview.accessibility_label" = "Tartarus 按鍵對應預覽";

@@ -1,12 +1,121 @@
 import Cocoa
 import SwiftUI
 import IOKit.hid
+import Combine
+
+// MARK: - LocaleManager: in-app language switching
+
+final class LocaleManager: ObservableObject {
+    static let shared = LocaleManager()
+    static let supportedLanguages = ["zh-Hans", "zh-Hant", "en", "ja"]
+    static let userDefaultsKey = "appLanguage"
+
+    @Published private(set) var currentLanguage: String
+
+    private var cancellables = Set<AnyCancellable>()
+    /// Incremented on every change so SwiftUI views keyed on this value rebuild.
+    private(set) var revision: UInt64 = 0
+
+    init() {
+        Self.installSwizzle()
+        let saved = UserDefaults.standard.string(forKey: Self.userDefaultsKey) ?? ""
+        let initial = Self.supportedLanguages.contains(saved) ? saved : "en"
+        self.currentLanguage = initial
+        Self.applyBundleOverride(initial)
+    }
+
+    func select(_ code: String) {
+        guard Self.supportedLanguages.contains(code), code != currentLanguage else { return }
+        currentLanguage = code
+        UserDefaults.standard.set(code, forKey: Self.userDefaultsKey)
+        Self.applyBundleOverride(code)
+        revision &+= 1
+        objectWillChange.send()
+        NotificationCenter.default.post(name: .appLanguageDidChange, object: self)
+    }
+
+    /// Names shown in the language menu, resolved through the CURRENT bundle override
+    /// so each language is written in its own script.
+    func menuItems() -> [(code: String, name: String)] {
+        Self.supportedLanguages.map { code in
+            let lproj = Bundle.main.path(forResource: code, ofType: "lproj")
+            let bundle = lproj.flatMap(Bundle.init(path:)) ?? Bundle.main
+            let name = bundle.localizedString(forKey: "lang.\(code)", value: code, table: nil)
+            return (code, name)
+        }
+    }
+
+    // MARK: - Bundle override
+
+    static var overrideBundle: Bundle?
+
+    private static func applyBundleOverride(_ code: String) {
+        guard let path = Bundle.main.path(forResource: code, ofType: "lproj"),
+              let bundle = Bundle(path: path) else { return }
+        overrideBundle = bundle
+    }
+
+    /// Install the swizzle exactly once. Must run before any NSLocalizedString call.
+    static func installSwizzle() {
+        struct Once { static var token: Int = 0 }
+        objc_sync_enter(Once.self)
+        defer { objc_sync_exit(Once.self) }
+        guard objc_getAssociatedObject(Bundle.self, &Once.token) == nil else { return }
+        objc_setAssociatedObject(Bundle.self, &Once.token, true, .OBJC_ASSOCIATION_RETAIN)
+
+        guard let originalMethod = class_getInstanceMethod(Bundle.self, #selector(Bundle.localizedString(forKey:value:table:))),
+              let swizzledMethod = class_getInstanceMethod(Bundle.self, #selector(Bundle.tl_swizzled_localizedString(forKey:value:table:))) else {
+            return
+        }
+
+        // Save the original implementation before swizzling
+        originalImp = method_getImplementation(originalMethod)
+
+        // Exchange implementations
+        method_exchangeImplementations(originalMethod, swizzledMethod)
+    }
+
+    /// Original implementation of Bundle.localizedString, saved before swizzling
+    nonisolated(unsafe) static var originalImp: IMP?
+}
+
+extension Bundle {
+    @objc func tl_swizzled_localizedString(forKey key: String, value: String?, table tableName: String?) -> String {
+        // Try override bundle first (but call the ORIGINAL implementation on it, not the swizzled one)
+        if let override = LocaleManager.overrideBundle,
+           let originalImp = LocaleManager.originalImp {
+            // Cast the IMP to the correct function type and call it directly
+            typealias LocalizedStringFunc = @convention(c) (Bundle, Selector, String, String?, String?) -> String
+            let originalFunc = unsafeBitCast(originalImp, to: LocalizedStringFunc.self)
+            let resolved = originalFunc(override, #selector(Bundle.localizedString(forKey:value:table:)), key, nil, tableName)
+            if resolved != key { return resolved }
+        }
+
+        // Fall back to original implementation on self
+        if let originalImp = LocaleManager.originalImp {
+            typealias LocalizedStringFunc = @convention(c) (Bundle, Selector, String, String?, String?) -> String
+            let originalFunc = unsafeBitCast(originalImp, to: LocalizedStringFunc.self)
+            return originalFunc(self, #selector(Bundle.localizedString(forKey:value:table:)), key, value, tableName)
+        }
+
+        // Ultimate fallback (should never reach here)
+        return key
+    }
+}
+
+extension Notification.Name {
+    static let appLanguageDidChange = Notification.Name("appLanguageDidChange")
+}
 
 enum LightEffect: Int, Codable, CaseIterable, Identifiable {
     case off = 0, solid = 1, spectrum = 3
     var id: Int { rawValue }
     var name: String {
-        switch self { case .off: return "关闭"; case .solid: return "固定颜色"; case .spectrum: return "光谱循环" }
+        switch self {
+        case .off: return NSLocalizedString("effect.off", comment: "")
+        case .solid: return NSLocalizedString("effect.solid", comment: "")
+        case .spectrum: return NSLocalizedString("effect.spectrum", comment: "")
+        }
     }
 }
 struct RGB: Codable, Equatable {
@@ -77,10 +186,10 @@ enum LightHardware {
     static func location(_ d: IOHIDDevice) -> UInt32 { (IOHIDDeviceGetProperty(d,kIOHIDLocationIDKey as CFString) as? NSNumber)?.uint32Value ?? 0 }
     static func number(_ d: IOHIDDevice,_ key: String) -> Int { (IOHIDDeviceGetProperty(d,key as CFString) as? NSNumber)?.intValue ?? 0 }
     static func apply(_ p: LightProfile, location: UInt32, volatile: Bool = false) -> (ok:Bool,message:String) {
-        guard p.valid, location != 0 else { return (false,"请选择已连接的设备和有效颜色") }
+        guard p.valid, location != 0 else { return (false,NSLocalizedString("hw.please_select_device_and_color", comment: "")) }
         let packet = LightProtocol.packet(p,volatile:volatile)
         let ds = devices(location:location)
-        guard !ds.isEmpty else { return (false,"设备已断开，等待重新连接") }
+        guard !ds.isEmpty else { return (false,NSLocalizedString("hw.device_disconnected_waiting", comment: "")) }
         var response = [UInt8](repeating:0,count:90)
         var length: UInt32 = 0
         let result = packet.withUnsafeBufferPointer { request in
@@ -89,9 +198,9 @@ enum LightHardware {
             }
         }
         if result == kIOReturnSuccess && LightProtocol.acknowledges(response,length:Int(length)) {
-            return (true,"设备已确认 · "+p.effect.name)
+            return (true,String(format: NSLocalizedString("hw.device_acknowledged", comment: ""), p.effect.name))
         }
-        return (false,"USB 灯光未确认：\(hidError(result))，设备状态 \(response[0])，回应长度 \(length)。")
+        return (false,String(format: NSLocalizedString("hw.usb_not_acknowledged", comment: ""), hidError(result), Int(response[0]), Int(length)))
 
     }
 }
@@ -100,7 +209,10 @@ final class Delegate: NSObject, NSApplicationDelegate {
     let controller = LightController()
     let startup = StartupController()
     let mapping = MappingController()
+    let locale = LocaleManager.shared
     private var observers: [NSObjectProtocol] = []
+    private var statusItem: NSStatusItem!
+    private var mainWindow: NSWindow?
     func applicationDidFinishLaunching(_ notification: Notification) {
         let center = NSWorkspace.shared.notificationCenter
         for name in [NSWorkspace.willSleepNotification, NSWorkspace.sessionDidResignActiveNotification] {
@@ -110,14 +222,78 @@ final class Delegate: NSObject, NSApplicationDelegate {
             observers.append(center.addObserver(forName:name,object:nil,queue:.main) { [weak self] _ in self?.controller.resume() })
         }
         if mapping.autoStart { DispatchQueue.main.async { [weak self] in self?.mapping.start() } }
+        setupStatusBar()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in self?.hideMainWindow() }
     }
     func applicationWillTerminate(_ notification: Notification) { controller.suspend(); mapping.stop() }
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+    private func setupStatusBar() {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        if let button = statusItem.button {
+            if let image = NSImage(systemSymbolName: "bolt.shield.fill", accessibilityDescription: "Tartarus Light") {
+                image.isTemplate = true
+                button.image = image
+            }
+            button.action = #selector(showMainWindow)
+            button.target = self
+        }
+    }
+    private func hideMainWindow() {
+        guard let window = NSApplication.shared.windows.first else { return }
+        mainWindow = window
+        window.delegate = self
+        window.orderOut(nil)
+    }
+    @objc func showMainWindow() {
+        if let window = mainWindow {
+            if window.isMiniaturized { window.deminiaturize(nil) }
+            window.makeKeyAndOrderFront(nil)
+            NSApplication.shared.activate(ignoringOtherApps: true)
+        } else if let window = NSApplication.shared.windows.first(where: { !($0 is NSPanel) }) {
+            mainWindow = window
+            window.delegate = self
+            if window.isMiniaturized { window.deminiaturize(nil) }
+            window.makeKeyAndOrderFront(nil)
+            NSApplication.shared.activate(ignoringOtherApps: true)
+        }
+    }
+    @objc func showAbout() {
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        let credits = NSAttributedString(
+            string: "Harisucici\nEmail: harisucici@gmail.com\nLine: +81 7092401286",
+            attributes: [.font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                         .foregroundColor: NSColor.secondaryLabelColor]
+        )
+        let options: [NSApplication.AboutPanelOptionKey: Any] = [.credits: credits]
+        NSApplication.shared.orderFrontStandardAboutPanel(options: options)
+    }
+    @objc func quitApp() { NSApp.terminate(nil) }
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        let alert = NSAlert()
+        alert.messageText = NSLocalizedString("quit.confirm.title", comment: "")
+        alert.informativeText = NSLocalizedString("quit.confirm.message", comment: "")
+        alert.addButton(withTitle: NSLocalizedString("quit.confirm.cancel", comment: ""))
+        alert.addButton(withTitle: NSLocalizedString("quit.confirm.quit", comment: ""))
+        alert.alertStyle = .warning
+        return alert.runModal() == .alertSecondButtonReturn ? .terminateNow : .terminateCancel
+    }
+
+}
+extension Delegate: NSWindowDelegate {
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        sender.orderOut(nil)
+        return false
+    }
 }
 struct RootView: View {
     let delegate: Delegate
     @ObservedObject var mapping: MappingController
-    init(delegate: Delegate) { self.delegate = delegate; mapping = delegate.mapping }
+    @ObservedObject var locale: LocaleManager
+    init(delegate: Delegate) {
+        self.delegate = delegate
+        mapping = delegate.mapping
+        locale = delegate.locale
+    }
     var body: some View {
         HStack(spacing:0) {
             VStack(alignment:.leading,spacing:8) {
@@ -125,11 +301,16 @@ struct RootView: View {
                 Text("TARTARUS").font(.system(size:16,weight:.black,design:.monospaced)).tracking(2)
                 Text("DEVICE CONTROL").font(.system(size:9,weight:.medium,design:.monospaced)).tracking(1.5).foregroundStyle(.secondary)
                 Rectangle().fill(RazerTheme.border).frame(height:1).padding(.vertical,22)
-                navigation("灯光效果",icon:"lightbulb.led",tab:0)
-                navigation("按键映射",icon:"keyboard",tab:1)
+                navigation(NSLocalizedString("nav.lights", comment: ""),icon:"lightbulb.led",tab:0)
+                navigation(NSLocalizedString("nav.mapping", comment: ""),icon:"keyboard",tab:1)
                 Spacer()
-                Text("TARTARUS V2").font(.system(size:10,weight:.semibold,design:.monospaced)).foregroundStyle(RazerTheme.green)
-                Text("本地设备控制 · v0.5.1").font(.system(size:10)).foregroundStyle(.secondary)
+                VStack(alignment:.leading, spacing:8) {
+                    languagePicker
+                    footerButtons
+                    Text("TARTARUS V2").font(.system(size:10,weight:.semibold,design:.monospaced)).foregroundStyle(RazerTheme.green)
+                    Text(String(format: NSLocalizedString("sidebar.version", comment: ""), VersionInfo.version))
+                        .font(.system(size:10)).foregroundStyle(.secondary)
+                }
             }.padding(22).frame(width:186).background(Color.black.opacity(0.35))
             Rectangle().fill(RazerTheme.border).frame(width:1)
             Group {
@@ -138,7 +319,54 @@ struct RootView: View {
             }.frame(maxWidth:.infinity,maxHeight:.infinity)
         }.frame(minWidth:1120,minHeight:790).background(RazerTheme.background)
         .preferredColorScheme(.dark).tint(RazerTheme.green)
+        .id(locale.revision)
         .onAppear { if mapping.autoStart { mapping.selectedTab = 1 } }
+    }
+    var languagePicker: some View {
+        VStack(alignment:.leading, spacing:4) {
+            Text(NSLocalizedString("sidebar.language_label", comment: ""))
+                .font(.system(size:9, weight:.medium, design:.monospaced))
+                .tracking(1)
+                .foregroundStyle(.secondary)
+            Menu {
+                ForEach(LocaleManager.supportedLanguages, id: \.self) { code in
+                    Button {
+                        locale.select(code)
+                    } label: {
+                        HStack {
+                            Text(languageName(for: code))
+                            if code == locale.currentLanguage {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(currentLanguageName())
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 9))
+                }
+                .font(.system(size: 11))
+                .foregroundStyle(RazerTheme.green)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+        }
+        .padding(.top, 8)
+    }
+    func currentLanguageName() -> String {
+        languageName(for: locale.currentLanguage)
+    }
+    func languageName(for code: String) -> String {
+        switch code {
+        case "zh-Hans": return NSLocalizedString("lang.zh-Hans", comment: "")
+        case "zh-Hant": return NSLocalizedString("lang.zh-Hant", comment: "")
+        case "en": return NSLocalizedString("lang.en", comment: "")
+        case "ja": return NSLocalizedString("lang.ja", comment: "")
+        default: return code
+        }
     }
     func navigation(_ title:String,icon:String,tab:Int) -> some View {
         Button { mapping.selectedTab = tab } label: {
@@ -150,6 +378,27 @@ struct RootView: View {
                 .background(mapping.selectedTab == tab ? RazerTheme.green.opacity(0.09) : .clear,in:RoundedRectangle(cornerRadius:7))
         }.buttonStyle(.plain)
     }
+    var footerButtons: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(NSLocalizedString("menu.about", comment: ""))
+                .font(.system(size: 10, weight: .semibold))
+            Text("Harisucici")
+            Text("harisucici@gmail.com")
+                .textSelection(.enabled)
+            Text("Line: +81 7092401286")
+                .textSelection(.enabled)
+            Button { delegate.quitApp() } label: {
+                Label(NSLocalizedString("menu.quit", comment: ""), systemImage: "power")
+                    .font(.system(size: 11, weight: .medium))
+                    .padding(.vertical, 6)
+            }
+            .buttonStyle(.plain)
+        }
+        .font(.system(size: 9))
+        .foregroundStyle(.secondary)
+        .padding(.top, 4)
+    }
+
 }
 struct LightApp: App {
     @NSApplicationDelegateAdaptor(Delegate.self) var delegate
