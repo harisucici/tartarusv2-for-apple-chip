@@ -108,10 +108,11 @@ extension Notification.Name {
 }
 
 enum LightEffect: Int, Codable, CaseIterable, Identifiable {
-    case off = 0, solid = 1, spectrum = 3
+    case off = 0, solid = 1, spectrum = 3, custom = 8
     var id: Int { rawValue }
     var name: String {
         switch self {
+        case .custom: return NSLocalizedString("effect.custom", comment: "")
         case .off: return NSLocalizedString("effect.off", comment: "")
         case .solid: return NSLocalizedString("effect.solid", comment: "")
         case .spectrum: return NSLocalizedString("effect.spectrum", comment: "")
@@ -130,10 +131,14 @@ struct LightProfile: Codable, Equatable {
     var cycleColors: [RGB]? = nil
     var cycleSeconds: Double? = nil
     var customCycle: Bool? = nil
+    var keyColors: [RGB]? = nil
+    var lightingOptions:LightingOptions? = nil
+    var lightingWorkspace:LightingWorkspace? = nil
+    var matrix: [RGB] { keyColors ?? Array(repeating:RGB(red:red,green:green,blue:blue),count:24) }
     var palette: [RGB] { cycleColors ?? RGB.defaults }
     var duration: Double { cycleSeconds ?? 10 }
     var valid: Bool {
-        RGB(red:red,green:green,blue:blue).valid && (2...8).contains(palette.count)
+        (lightingOptions?.valid ?? true) && (lightingWorkspace?.valid ?? true) && RGB(red:red,green:green,blue:blue).valid && matrix.count == 24 && matrix.allSatisfy(\.valid) && (2...8).contains(palette.count)
         && palette.allSatisfy(\.valid) && duration.isFinite && (2...60).contains(duration)
     }
     func frame(elapsed: TimeInterval) -> LightProfile {
@@ -167,6 +172,7 @@ enum LightProtocol {
         precondition(p.valid)
         let args: [UInt8]
         switch p.effect {
+        case .custom: args = [0,0,8,0,0,0,0,0,0,0,0,0]
         case .off: args = [1,5,0,0,0,0]
         case .spectrum: args = [1,5,3,0,0,0]
         case .solid: args = [1,5,1,0,0,1] + [p.red,p.green,p.blue].map { UInt8(($0*255).rounded()) }
@@ -177,6 +183,30 @@ enum LightProtocol {
         if volatile { b[8] = 0 }
         b[88] = b[2..<88].reduce(0,^)
         return b
+    }
+    // OpenRazer extended matrix protocol: 0F/03 rows, then 0F/02 custom effect.
+    static func packets(_ p:LightProfile, volatile:Bool = false) -> [[UInt8]] {
+        guard p.effect == .custom else { return [packet(p,volatile:volatile)] }
+        precondition(p.valid)
+        let rows = (0..<4).map { row -> [UInt8] in
+            var b = [UInt8](repeating:0,count:90)
+            b[1]=0x1f; b[5]=0x47; b[6]=0x0f; b[7]=3
+            b[10]=UInt8(row); b[11]=0; b[12]=5
+            for col in 0..<6 {
+                let rgb = p.matrix[row*6+col]
+                for (channel,value) in [rgb.red,rgb.green,rgb.blue].enumerated() {
+                    b[13+col*3+channel] = UInt8((value*255).rounded())
+                }
+            }
+            b[88] = b[2..<88].reduce(0,^)
+            return b
+        }
+        return rows + [packet(p)]
+    }
+    static func acknowledges(_ response:[UInt8], length:Int, request:[UInt8]) -> Bool {
+        length == 90 && response.count == 90 && request.count == 90 && response[0] == 2
+        && response[1] == request[1] && response[6] == request[6] && response[7] == request[7]
+        && response[88] == response[2..<88].reduce(0,^)
     }
     static func acknowledges(_ response: [UInt8], length: Int) -> Bool {
         length == 90 && response.count == 90 && response[0] == 2 && response[1] == 0x1f && response[6] == 15 && response[7] == 2 && response[88] == response[2..<88].reduce(0,^)
@@ -194,21 +224,23 @@ enum LightHardware {
     static func number(_ d: IOHIDDevice,_ key: String) -> Int { (IOHIDDeviceGetProperty(d,key as CFString) as? NSNumber)?.intValue ?? 0 }
     static func apply(_ p: LightProfile, location: UInt32, volatile: Bool = false) -> (ok:Bool,message:String) {
         guard p.valid, location != 0 else { return (false,NSLocalizedString("hw.please_select_device_and_color", comment: "")) }
-        let packet = LightProtocol.packet(p,volatile:volatile)
+        let packets = LightProtocol.packets(p,volatile:volatile)
         let ds = devices(location:location)
         guard !ds.isEmpty else { return (false,NSLocalizedString("hw.device_disconnected_waiting", comment: "")) }
-        var response = [UInt8](repeating:0,count:90)
-        var length: UInt32 = 0
-        let result = packet.withUnsafeBufferPointer { request in
-            response.withUnsafeMutableBufferPointer { reply in
-                tartarusLightTransfer(location,request.baseAddress!,reply.baseAddress!,&length)
+        for packet in packets {
+            var response = [UInt8](repeating:0,count:90)
+            var length: UInt32 = 0
+            let result = packet.withUnsafeBufferPointer { request in
+                response.withUnsafeMutableBufferPointer { reply in
+                    tartarusLightTransfer(location,request.baseAddress!,reply.baseAddress!,&length)
+                }
             }
+            if result == kIOReturnSuccess && LightProtocol.acknowledges(response,length:Int(length),request:packet) {
+                continue
+            }
+            return (false,String(format: NSLocalizedString("hw.usb_not_acknowledged", comment: ""), hidError(result), Int(response[0]), Int(length)))
         }
-        if result == kIOReturnSuccess && LightProtocol.acknowledges(response,length:Int(length)) {
-            return (true,String(format: NSLocalizedString("hw.device_acknowledged", comment: ""), p.effect.name))
-        }
-        return (false,String(format: NSLocalizedString("hw.usb_not_acknowledged", comment: ""), hidError(result), Int(response[0]), Int(length)))
-
+        return (true,String(format:NSLocalizedString("hw.device_acknowledged", comment:""),p.effect.name))
     }
 }
 
@@ -221,6 +253,11 @@ final class Delegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var mainWindow: NSWindow?
     func applicationDidFinishLaunching(_ notification: Notification) {
+        mapping.onPhysicalLightingKey = { [weak self] usage in
+            guard let self,self.controller.selectedLocation == self.mapping.selectedLocation,
+                  let index=LightingInput.index(page:7,usage:usage) else { return }
+            self.controller.lightingHit(index)
+        }
         let center = NSWorkspace.shared.notificationCenter
         let suspendEvents: [(Notification.Name,MappingResumeState.Reason)] = [
             (NSWorkspace.willSleepNotification,.sleep),
@@ -229,7 +266,8 @@ final class Delegate: NSObject, NSApplicationDelegate {
         ]
         for (name,reason) in suspendEvents {
             observers.append(center.addObserver(forName:name,object:nil,queue:.main) { [weak self] _ in
-                self?.mapping.suspend(reason); self?.controller.suspend()
+                self?.mapping.suspend(reason)
+                if reason == .display { self?.controller.displayOff=true } else { self?.controller.suspend() }
             })
         }
         let resumeEvents: [(Notification.Name,MappingResumeState.Reason)] = [
@@ -239,7 +277,8 @@ final class Delegate: NSObject, NSApplicationDelegate {
         ]
         for (name,reason) in resumeEvents {
             observers.append(center.addObserver(forName:name,object:nil,queue:.main) { [weak self] _ in
-                self?.mapping.resume(reason); self?.controller.resume()
+                self?.mapping.resume(reason)
+                if reason == .display { self?.controller.displayOff=false } else { self?.controller.resume() }
             })
         }
         let distributed = DistributedNotificationCenter.default()

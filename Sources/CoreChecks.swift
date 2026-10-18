@@ -4,6 +4,7 @@ import SwiftUI
 
 func runCoreChecks() {
     runMappingChecks()
+    runStudioChecks()
     let p = LightProfile(red:1,green:0,blue:0,effect:.solid,location:17825792)
     let packet = LightProtocol.packet(p)
     precondition(packet.count == 90 && packet[88] == 255)
@@ -83,6 +84,47 @@ func runCoreChecks() {
     }
     for _ in 0..<12 { colors.addCycleColor() }
     precondition(colors.cycleStops.count == 8)
+    // Matrix layout: 19 main keys, wheel (00), thumb key 20; three holes.
+    precondition(LightLayout.active.count == 21 && LightLayout.active.contains(22) && LightLayout.active.contains(23))
+    precondition(!LightLayout.active.contains(5) && !LightLayout.active.contains(11) && !LightLayout.active.contains(17))
+    colors.effect = .custom
+    let blue = RGB(red:0,green:0,blue:1)
+    let original = colors.keyColors
+    colors.setKeyColors(indices:[22],rgb:blue)
+    precondition(colors.keyColors[22] == blue && colors.keyColors[23] == original[23])
+    colors.setKeyColors(indices:LightLayout.column(0),rgb:blue)
+    precondition([0,6,12,18].allSatisfy { colors.keyColors[$0] == blue })
+    precondition(colors.keyColors[1] == original[1])
+    colors.setKeyColors(indices:Set(LightLayout.rows[2]),rgb:blue)
+    precondition(LightLayout.rows[2].allSatisfy { colors.keyColors[$0] == blue })
+    colors.setKeyColors(indices:[-1,5,24],rgb:blue)
+    precondition(colors.keyColors[5] == original[5])
+    let custom = colors.profile
+    precondition(try! JSONDecoder().decode(LightProfile.self,from:JSONEncoder().encode(custom)) == custom)
+    let frames = LightProtocol.packets(custom)
+    precondition(frames.count == 5)
+    for (row, frame) in frames.prefix(4).enumerated() {
+        precondition(frame.count == 90 && frame[5] == 0x47 && frame[7] == 3)
+        precondition(frame[10] == UInt8(row) && frame[11] == 0 && frame[12] == 5)
+        precondition(frame[88] == frame[2..<88].reduce(0,^))
+        precondition(frame.withUnsafeBufferPointer { tartarusLightRequestValid($0.baseAddress!) } == 1)
+        var ack = frame; ack[0] = 2
+        precondition(LightProtocol.acknowledges(ack,length:90,request:frame))
+        ack[7] = 2; ack[88] = ack[2..<88].reduce(0,^)
+        precondition(!LightProtocol.acknowledges(ack,length:90,request:frame))
+    }
+    precondition(Array(frames[3][25..<28]) == [0,0,255]) // wheel, not key 20
+    precondition(frames[4][5] == 12 && frames[4][10] == 8)
+    precondition(frames[4].withUnsafeBufferPointer { tartarusLightRequestValid($0.baseAddress!) } == 1)
+    for (offset,value) in [(10,UInt8(4)),(12,UInt8(6)),(7,UInt8(4)),(31,UInt8(1))] {
+        var malformed = frames[0]; malformed[offset] = value
+        malformed[88] = malformed[2..<88].reduce(0,^)
+        precondition(malformed.withUnsafeBufferPointer { tartarusLightRequestValid($0.baseAddress!) } == 0)
+    }
+    var badMatrix = custom; badMatrix.keyColors = []; precondition(!badMatrix.valid)
+    badMatrix.keyColors = Array(repeating:RGB(red:2,green:0,blue:0),count:24); precondition(!badMatrix.valid)
+    precondition(migrated.matrix.count == 24 && migrated.matrix[22] == RGB(red:0.2,green:0.3,blue:1))
+    print("PASS: matrix layout, wheel isolation, row/column edits, profile migration, packet sequence, native allowlist and command-aware acknowledgements. No device commands.")
     print("PASS: retained ColorPicker binding after deletion, identity after reorder, stale callbacks, 500 edit cycles and palette limits. No device commands.")
     print("PASS: lighting packet vectors, ack validation, physical USB scope, color-only profile migration and round trip. No device commands or startup changes made.")
 }

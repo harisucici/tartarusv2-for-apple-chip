@@ -36,7 +36,7 @@ xcrun clang -target arm64-apple-macos13.0 -fmodules-cache-path="$task_cache/modu
     -c Sources/USBTransport.c -o "$task_cache/USBTransport.o"
 xcrun swiftc -target arm64-apple-macos13.0 -module-cache-path "$task_cache/modules" \
     -import-objc-header Sources/USBTransport.h -parse-as-library \
-    Sources/Main.swift Sources/LightController.swift Sources/LightView.swift Sources/Theme.swift \
+    Sources/LightingStudio.swift Sources/StudioView.swift Sources/StudioChecks.swift Sources/Main.swift Sources/LightController.swift Sources/LightView.swift Sources/Theme.swift \
     Sources/StartupController.swift Sources/SystemSettingsView.swift Sources/CoreChecks.swift Sources/MappingEngine.swift \
     Sources/MappingController.swift Sources/MappingView.swift Sources/MappingChecks.swift \
     Sources/PrivilegedInput.swift Sources/InputService.swift Sources/RootHelper.swift Sources/IPC.swift Sources/DeviceScope.swift \

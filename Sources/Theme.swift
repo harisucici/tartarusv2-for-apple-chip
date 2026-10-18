@@ -47,27 +47,28 @@ struct PageHeading: View {
 }
 struct KeypadPreview: View {
     var color: Color
+    var keyColors:[RGB]? = nil
     var body: some View {
         VStack(spacing:20) {
             HStack { Text("TARTARUS").font(.system(size:10,weight:.bold,design:.monospaced)).tracking(3); Spacer(); Text("V2").foregroundStyle(RazerTheme.green).font(.caption.bold()) }
             VStack(spacing:7) {
                 ForEach(0..<4) { row in
-                    HStack(spacing:7) {
-                        ForEach(0..<5) { col in
-                            Text(String(format:"%02d",row*5+col+1)).font(.system(size:9,weight:.medium,design:.monospaced))
-                                .frame(width:34,height:34).foregroundStyle(color)
+                    HStack(spacing:5) {
+                        ForEach(LightLayout.rows[row],id:\.self) { index in
+                            let tint = keyColors?[index].color ?? color
+                            Text(LightLayout.label(index)).font(.system(size:index == 22 ? 6 : 9,weight:.medium,design:.monospaced))
+                                .frame(width:30,height:34).foregroundStyle(tint)
                                 .background(Color.black.opacity(0.7),in:RoundedRectangle(cornerRadius:5))
-                                .overlay(RoundedRectangle(cornerRadius:5).stroke(color.opacity(0.65),lineWidth:1))
-                                .shadow(color:color.opacity(0.22),radius:6)
+                                .overlay(RoundedRectangle(cornerRadius:5).stroke(tint.opacity(0.65),lineWidth:1))
                         }
                     }
                 }
-            }.rotationEffect(.degrees(-6)).padding(.vertical,8)
+            }.padding(.vertical,8)
             RoundedRectangle(cornerRadius:28).fill(LinearGradient(colors:[.white.opacity(0.06),.black.opacity(0.4)],startPoint:.top,endPoint:.bottom)).frame(width:180,height:60)
                 .overlay(Image(systemName:"waveform.path").font(.title2).foregroundStyle(color.opacity(0.8)))
             Text("CHROMA RGB").font(.system(size:9,weight:.medium,design:.monospaced)).tracking(4).foregroundStyle(.secondary)
         }.padding(22).frame(width:250).background(LinearGradient(colors:[color.opacity(0.045),.clear],startPoint:.top,endPoint:.bottom),in:RoundedRectangle(cornerRadius:12))
             .overlay(RoundedRectangle(cornerRadius:12).stroke(RazerTheme.border))
-        .accessibilityElement(children:.ignore).accessibilityLabel("Tartarus 灯光预览")
+        .accessibilityElement(children:.ignore).accessibilityLabel(lightingText("previewAccessibility"))
     }
 }
