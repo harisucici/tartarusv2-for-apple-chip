@@ -48,6 +48,7 @@ final class MappingController: ObservableObject {
     private var timer: Timer?
     private var repeatTimer: Timer?
     // Used by the self-test only. Production always posts the engine's output.
+    var onPhysicalLightingKey:((Int)->Void)?
     var eventSink: ((KeyOutput) -> Void)?
     var scheduleTask: (TimeInterval,DispatchWorkItem) -> Void = { delay,task in
         DispatchQueue.main.asyncAfter(deadline:.now()+delay,execute:task)
@@ -217,6 +218,7 @@ final class MappingController: ObservableObject {
     }
     func process(usage: Int,down: Bool,source: String) {
         guard running else { return }
+        if down { onPhysicalLightingKey?(usage) }
         if down { lastKey = String(format:NSLocalizedString("status.last_key_format", comment: ""), (keys.first { $0.usage == usage }?.name ?? NSLocalizedString("status.unknown_key", comment: "")), usage) }
         let currentBindings = activeBindings ?? bindings
         if macroSources.contains(source) {

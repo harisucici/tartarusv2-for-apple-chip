@@ -13,15 +13,30 @@ static uint32_t property(io_service_t service, CFStringRef key) {
     if (value) CFRelease(value);
     return (uint32_t)result;
 }
-// Deliberately restricted to the three lighting effects. No interface grabs, reset,
-// configuration changes, interrupt reads, input report requests, or detach calls.
+// Only validated lighting reports; never grabs or resets input interfaces.
+int32_t tartarusLightRequestValid(const uint8_t *request) {
+    if (!request) return 0;
+    uint8_t crc = 0;
+    for (int i=2;i<88;i++) crc ^= request[i];
+    if (request[0] || request[1] != 0x1f || request[6] != 15 || request[88] != crc) return 0;
+    if (request[7] == 3) {
+        if (request[5] != 0x47 || request[8] || request[9] || request[10] > 3 || request[11] != 0 || request[12] != 5) return 0;
+        for (int i=31;i<88;i++) if (request[i]) return 0;
+        return 1;
+    }
+    if (request[7] != 2) return 0;
+    if (request[10] == 8 && request[5] == 12) {
+        if (request[8] || request[9]) return 0;
+        for (int i=11;i<88;i++) if (request[i]) return 0;
+        return 1;
+    }
+    if (request[8] > 1 || request[9] != 5) return 0;
+    return (request[10] == 1 && request[5] == 9) || ((request[10] == 0 || request[10] == 3) && request[5] == 6);
+}
 int32_t tartarusLightTransfer(uint32_t location, const uint8_t *request, uint8_t *response, uint32_t *actualLength) {
     if (!location || !request || !response || !actualLength) return kIOReturnBadArgument;
     *actualLength = 0;
-    uint8_t crc = 0;
-    for (int i=2;i<88;i++) crc ^= request[i];
-    if (request[0] || request[1] != 0x1f || request[6] != 15 || request[7] != 2 || request[8] > 1 || request[9] != 5 || request[88] != crc) return kIOReturnBadArgument;
-    if (!((request[10] == 1 && request[5] == 9) || ((request[10] == 0 || request[10] == 3) && request[5] == 6))) return kIOReturnBadArgument;
+    if (!tartarusLightRequestValid(request)) return kIOReturnBadArgument;
     io_iterator_t iterator = 0;
     IOReturn result = IOServiceGetMatchingServices(kIOMainPortDefault,IOServiceMatching("IOUSBHostDevice"),&iterator);
     if (result != kIOReturnSuccess) return result;
