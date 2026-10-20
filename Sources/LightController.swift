@@ -33,7 +33,15 @@ final class LightController: ObservableObject {
     var lightingHits:[LightingHit]=[]
     var previewHits:[LightingHit]=[]
     let lightingInput=LightingInput()
-    var displayOff=false
+    @Published var displayOff=false
+    var idleSeconds:() -> Double = {
+        // HIDIdleTime includes keyboard, mouse and physical HID activity.
+        let service=IOServiceGetMatchingService(kIOMainPortDefault,IOServiceMatching("IOHIDSystem"))
+        guard service != 0 else { return 0 }
+        defer { IOObjectRelease(service) }
+        guard let value=IORegistryEntryCreateCFProperty(service,"HIDIdleTime" as CFString,kCFAllocatorDefault,0)?.takeRetainedValue() as? NSNumber else { return 0 }
+        return value.doubleValue / 1_000_000_000
+    }
     @Published var red = 0.27
     @Published var green = 1.0
     @Published var blue = 0.0
@@ -59,6 +67,7 @@ final class LightController: ObservableObject {
     private var refreshAt: TimeInterval = 0
     private var sent: LightProfile?
     private var suspended = false
+    private var inputRequested=false
     private var persistenceError:String?
     private let profileURL:URL?
     var profile: LightProfile { LightProfile(red:red,green:green,blue:blue,effect:effect,location:selectedLocation,cycleColors:cycleColors,cycleSeconds:cycleSeconds,customCycle:customCycle,keyColors:keyColors,lightingOptions:options,lightingWorkspace:workspace) }
@@ -155,7 +164,13 @@ final class LightController: ObservableObject {
         preview=previewMatrix[0]
         if now >= refreshAt {
             refreshAt = now + 2
-            if needsLightingInput && connected { lightingInput.start(location:selectedLocation) }
+            if needsLightingInput && connected {
+                if !inputRequested {
+                    inputRequested=true
+                    _ = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
+                }
+                lightingInput.start(location:selectedLocation)
+            }
             else { lightingInput.stop() }
             inputReady=lightingInput.ready
             let wasConnected = connected; detect()
@@ -193,7 +208,16 @@ final class LightController: ObservableObject {
             }
         }
     }
-    func suspend() { lightingInput.stop(); suspended = true; generation += 1; cycling = false; debounce?.cancel() }
+    func suspend(turnOff:Bool=false) {
+        if turnOff && options.offWhenDisplayOff && connected {
+            var dark=profile; dark.effect = .custom
+            dark.keyColors=Array(repeating:StudioRenderer.black,count:24)
+            let location=selectedLocation
+            // Serialize after any pending frame so it cannot relight the device.
+            queue.async { _ = LightHardware.apply(dark,location:location,volatile:true) }
+        }
+        lightingInput.stop(); suspended = true; generation += 1; cycling = false; debounce?.cancel()
+    }
     func resume() { suspended = false; observed = nil; detect(); scheduleIfChanged() }
 }
 
@@ -382,7 +406,7 @@ extension LightController {
         var p=profile
         var preset=options.advanced ? draftPreset : StudioPreset(layers:[options.quick])
         if !options.advanced { preset.layers[0].mask=LightLayout.active.sorted() }
-        let idle=CGEventSource.secondsSinceLastEventType(.combinedSessionState,eventType:.null)
+        let idle=idleSeconds()
         let dark = !options.enabled || (displayOff && options.offWhenDisplayOff) || (options.offWhenIdle && idle >= options.idleMinutes*60)
         p.effect = .custom
         p.keyColors=StudioRenderer.render(preset,time:elapsed,hits:preview ? previewHits : lightingHits,brightness:dark ? 0 : options.brightness)

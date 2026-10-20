@@ -267,7 +267,7 @@ final class Delegate: NSObject, NSApplicationDelegate {
         for (name,reason) in suspendEvents {
             observers.append(center.addObserver(forName:name,object:nil,queue:.main) { [weak self] _ in
                 self?.mapping.suspend(reason)
-                if reason == .display { self?.controller.displayOff=true } else { self?.controller.suspend() }
+                if reason == .display { self?.controller.displayOff=true } else if reason == .sleep { self?.controller.suspend(turnOff:true) }
             })
         }
         let resumeEvents: [(Notification.Name,MappingResumeState.Reason)] = [
@@ -278,7 +278,7 @@ final class Delegate: NSObject, NSApplicationDelegate {
         for (name,reason) in resumeEvents {
             observers.append(center.addObserver(forName:name,object:nil,queue:.main) { [weak self] _ in
                 self?.mapping.resume(reason)
-                if reason == .display { self?.controller.displayOff=false } else { self?.controller.resume() }
+                if reason == .display { self?.controller.displayOff=false } else if reason == .sleep { self?.controller.resume() }
             })
         }
         let distributed = DistributedNotificationCenter.default()

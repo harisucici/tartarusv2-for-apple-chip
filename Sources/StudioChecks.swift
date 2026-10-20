@@ -83,6 +83,17 @@ func runStudioChecks() {
     c.options.enabled=true;c.displayOff=true
     precondition(c.renderedFrame(elapsed:0).matrix.allSatisfy {$0 == StudioRenderer.black})
     c.options.offWhenDisplayOff=false;precondition(c.renderedFrame(elapsed:0).matrix[0] != StudioRenderer.black)
+    c.options.offWhenIdle=true;c.options.idleMinutes=1;c.idleSeconds={60}
+    precondition(c.renderedFrame(elapsed:0).matrix.allSatisfy {$0 == StudioRenderer.black})
+    c.idleSeconds={59}
+    precondition(c.renderedFrame(elapsed:0).matrix[0] != StudioRenderer.black)
+    c.options.offWhenIdle=false
+    var ripple=StudioLayer(effect:.ripple);ripple.colors=[blue];ripple.duration=2
+    let ripplePreset=StudioPreset(layers:[ripple])
+    precondition(StudioRenderer.render(ripplePreset,time:0,hits:[]).allSatisfy {$0 == StudioRenderer.black})
+    precondition(StudioRenderer.render(ripplePreset,time:0,hits:[LightingHit(index:0,time:0)])[0] == blue)
+    precondition(StudioRenderer.render(ripplePreset,time:0.5,hits:[LightingHit(index:0,time:0)])[2].blue > 0)
+    precondition(StudioRenderer.render(ripplePreset,time:2,hits:[LightingHit(index:0,time:0)]).allSatisfy {$0 == StudioRenderer.black})
     let old=LightProfile(red:1,green:0,blue:0,effect:.spectrum,cycleColors:[red,blue],cycleSeconds:12,customCycle:true)
     c.displayOff=false;c.loadStudio(old)
     precondition(c.options.quick.spectrumPalette && c.options.quick.colors == [red,blue])
