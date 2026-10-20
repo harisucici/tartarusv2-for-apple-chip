@@ -8,7 +8,7 @@ mkdir -p "$task_cache/tmp" "$task_cache/modules" "$task_app/Contents/MacOS"
 export TMPDIR="$task_cache/tmp"
 
 # --- Version generation: YYYY-MM-DD-vN format ---
-TODAY=$(date +%Y-%m-%d)
+TODAY=$(TZ=Asia/Shanghai date +%Y-%m-%d)
 VERSION_FILE="$PWD/version.txt"
 if [[ -f "$VERSION_FILE" ]]; then
     stored_date=$(cut -d' ' -f1 < "$VERSION_FILE")
@@ -21,7 +21,6 @@ if [[ -f "$VERSION_FILE" ]]; then
 else
     count=1
 fi
-echo "$TODAY $count" > "$VERSION_FILE"
 APP_VERSION="${TODAY}-v${count}"
 print "Version: $APP_VERSION"
 
@@ -74,4 +73,5 @@ if [[ "$(uname -m)" == arm64 ]]; then
 else
     print 'Built for Apple Silicon. Run --self-test on an Apple Silicon Mac.'
 fi
+echo "$TODAY $count" > "$VERSION_FILE"
 print "Built: $task_app"

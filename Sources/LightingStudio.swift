@@ -197,7 +197,13 @@ final class LightingInput {
     private var pressed=Set<String>()
     var onHit:((Int)->Void)?
     private(set) var location:UInt32=0
-    var ready:Bool { manager != nil }
+    var ready:Bool {
+        guard let manager, let devices=IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice> else { return false }
+        return devices.contains { device in
+            (IOHIDDeviceGetProperty(device,kIOHIDPrimaryUsagePageKey as CFString) as? NSNumber)?.intValue == 1 &&
+            (IOHIDDeviceGetProperty(device,kIOHIDPrimaryUsageKey as CFString) as? NSNumber)?.intValue == 6
+        }
+    }
     static let usages=[30,31,32,33,34,43,20,26,8,21,57,4,22,7,9,225,29,27,6,44]
     static func index(page:Int,usage:Int) -> Int? {
         if page == 7, let i=usages.firstIndex(of:usage) { return i == 19 ? 23 : i/5*6+i%5 }
