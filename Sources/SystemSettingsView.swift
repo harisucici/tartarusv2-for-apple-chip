@@ -25,7 +25,7 @@ struct SystemSettingsView: View {
                     }
                     Divider()
                     HStack {
-                        checkRow(text("settings.input"),state:mapping.serviceInputAccess.rawValue,good:mapping.serviceInputAccess == .granted)
+                        checkRow(text("settings.input"),state:mapping.appInputAccess.rawValue,good:mapping.appInputAccess == .granted)
                         Button(text("startup.open_settings")) { mapping.openPermissionSettings(input:true) }
                         Button(text("settings.service.show")) { mapping.showInputService() }
                             .disabled(!FileManager.default.fileExists(atPath:InputService.appPath))
