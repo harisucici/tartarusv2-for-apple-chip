@@ -98,6 +98,21 @@ func runStudioChecks() {
     c.displayOff=false;c.loadStudio(old)
     precondition(c.options.quick.spectrumPalette && c.options.quick.colors == [red,blue])
     precondition(c.renderedFrame(elapsed:3).matrix[0] == RGB(red:0.5,green:0,blue:0.5))
+    let native=LightController(loadProfile:false)
+    for (effect,hardware) in [(StudioEffect.solid,LightEffect.solid),(.spectrum,.spectrum),(.wave,.wave),(.breathing,.breathing),(.reactive,.reactive),(.starlight,.starlight),(.off,.off)] {
+        native.options.quick=StudioLayer(effect:effect)
+        precondition(native.renderedFrame(elapsed:0).effect == hardware)
+        precondition(native.renderedFrame(elapsed:0,preview:true).effect == .custom)
+    }
+    native.options.quick=StudioLayer(effect:.reactive)
+    precondition(native.needsLightingInput)
+    native.options.quick.speed=1.5
+    precondition(native.renderedFrame(elapsed:0).effect == .custom && native.needsLightingInput)
+    native.options.quick=StudioLayer(effect:.spectrum)
+    native.options.quick.spectrumPalette=true
+    precondition(native.renderedFrame(elapsed:0).effect == .custom)
+    native.options.quick.spectrumPalette=false; native.options.brightness=0.5
+    precondition(native.renderedFrame(elapsed:0).effect == .custom)
     var bad=preset;bad.layers[0].mask=[24];precondition(!bad.valid)
     bad=preset;bad.layers[0].group=UUID();precondition(!bad.valid)
     bad=preset;bad.layers[0].speed = .nan;precondition(!bad.valid)

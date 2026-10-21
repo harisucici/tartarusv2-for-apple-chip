@@ -37,6 +37,31 @@ func runCoreChecks() {
         let data = LightProtocol.packet(x)
         precondition(data[5] == 6 && data[10] == UInt8(mode.rawValue))
     }
+    for (studio,hardware) in [(StudioEffect.wave,LightEffect.wave),(.breathing,.breathing),(.reactive,.reactive),(.starlight,.starlight)] {
+        var options=LightingOptions(); options.quick=StudioLayer(effect:studio)
+        var x=p; x.effect=hardware; x.lightingOptions=options
+        let data=LightProtocol.packet(x)
+        precondition(data[10] == UInt8(hardware.rawValue))
+        precondition(data.withUnsafeBufferPointer { tartarusLightRequestValid($0.baseAddress!) } == 1)
+        var malformed=data; malformed[13]=9; malformed[88]=malformed[2..<88].reduce(0,^)
+        precondition(malformed.withUnsafeBufferPointer { tartarusLightRequestValid($0.baseAddress!) } == 0)
+    }
+    var nativeOptions=LightingOptions(); nativeOptions.quick=StudioLayer(effect:.wave)
+    var native=p; native.effect = .wave; native.lightingOptions=nativeOptions
+    precondition(LightProtocol.packet(native)[11] == 2)
+    nativeOptions.quick.angle=180; native.lightingOptions=nativeOptions
+    precondition(LightProtocol.packet(native)[11] == 1)
+    for effect in [StudioEffect.breathing,.starlight] {
+        nativeOptions.quick=StudioLayer(effect:effect)
+        nativeOptions.quick.colors=[RGB(red:1,green:0,blue:0),RGB(red:0,green:0,blue:1)]
+        native.effect=effect == .breathing ? .breathing : .starlight
+        native.lightingOptions=nativeOptions
+        let dual=LightProtocol.packet(native)
+        precondition(dual[5] == 12 && dual.withUnsafeBufferPointer { tartarusLightRequestValid($0.baseAddress!) } == 1)
+        nativeOptions.quick.random=true; native.lightingOptions=nativeOptions
+        let random=LightProtocol.packet(native,volatile:true)
+        precondition(random[5] == 6 && random.withUnsafeBufferPointer { tartarusLightRequestValid($0.baseAddress!) } == 1)
+    }
     var invalid = p; invalid.red = 1.1
     precondition(!invalid.valid)
     var cycle = p; cycle.effect = .spectrum; cycle.customCycle = true; cycle.cycleSeconds = 4

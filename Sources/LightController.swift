@@ -143,13 +143,38 @@ final class LightController: ObservableObject {
         if selectedLocation == 0 && found.count == 1 { selectedLocation = found[0] }
     }
     private var observed: LightProfile?
-    private func configureTicker() {
+    private var hardwareQuickEffect: LightEffect? {
+        guard options.enabled, !options.advanced, options.brightness == 1 else { return nil }
+        let layer = options.quick
+        guard layer.enabled, layer.opacity == 1, !layer.startOnKey, layer.delay == 0,
+              layer.repeatCount == 0, layer.group == nil, layer.speed == 1 else { return nil }
+        switch layer.effect {
+        case .off: return .off
+        case .solid: return !layer.random && layer.colors.count == 1 ? .solid : nil
+        case .spectrum: return !layer.spectrumPalette && layer.duration == 3 ? .spectrum : nil
+        case .wave:
+            return layer.duration == 3 && layer.width == 1 && layer.centerX == 2.5 && layer.centerY == 1.5 &&
+                (layer.angle == 0 || layer.angle == 180) ? .wave : nil
+        case .breathing:
+            return layer.duration == 7 && (layer.random || layer.colors.count <= 2) ? .breathing : nil
+        case .reactive:
+            return layer.duration == 3 && !layer.random ? .reactive : nil
+        case .starlight:
+            return layer.duration == 3 && (layer.random || layer.colors.count <= 2) ? .starlight : nil
+        default: return nil
+        }
+    }
+    private var softwareAnimation: Bool {
         let layers = options.advanced ? draftPreset.layers : [options.quick]
-        let animated = options.enabled && layers.contains { layer in
+        return options.enabled && hardwareQuickEffect == nil && layers.contains { layer in
             layer.enabled && layer.effect.animated &&
             (layer.group == nil || !(options.advanced && draftPreset.groups.contains { $0.id == layer.group && !$0.enabled }))
         }
-        let interval: TimeInterval = animated ? 0.1 : 2
+    }
+    private func configureTicker() {
+        let previewVisible = NSApp?.isActive == true && (NSApp?.windows.contains { $0.isVisible && !$0.isMiniaturized && $0.level == .normal } ?? false)
+        let animatePreview = (hardwareQuickEffect?.rawValue ?? 0) > 1 && previewVisible && !previewPaused
+        let interval: TimeInterval = softwareAnimation || animatePreview ? 0.1 : 2
         guard interval != tickInterval else { return }
         ticker?.invalidate()
         tickInterval = interval
@@ -190,6 +215,7 @@ final class LightController: ObservableObject {
     }
     private func tick(forceFrame:Bool=false) {
         guard !suspended else { return }
+        configureTicker()
         let now = ProcessInfo.processInfo.systemUptime
         if !previewPaused { previewTime += max(0,now-lastTick)*previewSpeed }
         lastTick = now
@@ -214,7 +240,7 @@ final class LightController: ObservableObject {
         }
         guard cycling, connected, !busy else { return }
         // Static lighting is already stored on the device. Poll only for reconnection.
-        guard forceFrame || tickInterval < 1 || options.offWhenIdle else { return }
+        guard forceFrame || softwareAnimation || options.offWhenIdle else { return }
         let frame = renderedFrame(elapsed:now-cycleStart)
         guard frame != sent else { return }
         send(frame,generation:generation,isCycle:true,saved:true)
@@ -442,6 +468,13 @@ extension LightController {
         if !options.advanced { preset.layers[0].mask=LightLayout.active.sorted() }
         let idle=options.offWhenIdle ? idleSeconds() : 0
         let dark = !options.enabled || (displayOff && options.offWhenDisplayOff) || (options.offWhenIdle && idle >= options.idleMinutes*60)
+        if !preview, !dark, let hardware = hardwareQuickEffect {
+            p.effect = hardware
+            if hardware == .solid, let color = options.quick.colors.first {
+                p.red = color.red; p.green = color.green; p.blue = color.blue
+            }
+            return p
+        }
         p.effect = .custom
         p.keyColors=StudioRenderer.render(preset,time:elapsed,hits:preview ? previewHits : lightingHits,brightness:dark ? 0 : options.brightness)
         return p

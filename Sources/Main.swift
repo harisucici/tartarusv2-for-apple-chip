@@ -108,7 +108,7 @@ extension Notification.Name {
 }
 
 enum LightEffect: Int, Codable, CaseIterable, Identifiable {
-    case off = 0, solid = 1, spectrum = 3, custom = 8
+    case off = 0, solid = 1, breathing = 2, spectrum = 3, wave = 4, reactive = 5, starlight = 7, custom = 8
     var id: Int { rawValue }
     var name: String {
         switch self {
@@ -116,6 +116,10 @@ enum LightEffect: Int, Codable, CaseIterable, Identifiable {
         case .off: return NSLocalizedString("effect.off", comment: "")
         case .solid: return NSLocalizedString("effect.solid", comment: "")
         case .spectrum: return NSLocalizedString("effect.spectrum", comment: "")
+        case .breathing: return lightingText("breathing")
+        case .wave: return lightingText("wave")
+        case .reactive: return lightingText("reactive")
+        case .starlight: return lightingText("starlight")
         }
     }
 }
@@ -170,12 +174,28 @@ enum LightProtocol {
     }
     static func packet(_ p: LightProfile, volatile: Bool = false) -> [UInt8] {
         precondition(p.valid)
+        let layer = p.lightingOptions?.quick
+        func rgb(_ color:RGB) -> [UInt8] { [color.red,color.green,color.blue].map { UInt8(($0*255).rounded()) } }
         let args: [UInt8]
         switch p.effect {
         case .custom: args = [0,0,8,0,0,0,0,0,0,0,0,0]
         case .off: args = [1,5,0,0,0,0]
         case .spectrum: args = [1,5,3,0,0,0]
         case .solid: args = [1,5,1,0,0,1] + [p.red,p.green,p.blue].map { UInt8(($0*255).rounded()) }
+        case .wave:
+            args = [1,5,4,layer?.angle == 180 ? 1 : 2,0x70,0]
+        case .breathing:
+            let colors = layer?.colors ?? []
+            if layer?.random == true { args = [1,5,2,0,0,0] }
+            else if colors.count >= 2 { args = [1,5,2,2,0,2] + rgb(colors[0]) + rgb(colors[1]) }
+            else { args = [1,5,2,1,0,1] + rgb(colors.first ?? RGB(red:p.red,green:p.green,blue:p.blue)) }
+        case .reactive:
+            args = [1,5,5,0,2,1] + rgb(layer?.colors.first ?? RGB(red:p.red,green:p.green,blue:p.blue))
+        case .starlight:
+            let colors = layer?.colors ?? []
+            if layer?.random == true { args = [1,5,7,0,2,0] }
+            else if colors.count >= 2 { args = [1,5,7,0,2,2] + rgb(colors[0]) + rgb(colors[1]) }
+            else { args = [1,5,7,0,2,1] + rgb(colors.first ?? RGB(red:p.red,green:p.green,blue:p.blue)) }
         }
         var b = [UInt8](repeating:0,count:90)
         b[1] = 0x1f; b[5] = UInt8(args.count); b[6] = 15; b[7] = 2

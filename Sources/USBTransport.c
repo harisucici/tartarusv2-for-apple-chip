@@ -31,7 +31,22 @@ int32_t tartarusLightRequestValid(const uint8_t *request) {
         return 1;
     }
     if (request[8] > 1 || request[9] != 5) return 0;
-    return (request[10] == 1 && request[5] == 9) || ((request[10] == 0 || request[10] == 3) && request[5] == 6);
+    int size = request[5];
+    for (int i=8+size;i<88;i++) if (request[i]) return 0;
+    switch (request[10]) {
+    case 0: case 3: return size == 6 && !request[11] && !request[12] && !request[13];
+    case 1: return size == 9 && !request[11] && !request[12] && request[13] == 1;
+    case 4: return size == 6 && request[11] >= 1 && request[11] <= 2 && request[12] == 0x70 && !request[13];
+    case 2: // Breathing: random, one color, or two colors.
+        return (size == 6 && !request[11] && !request[12] && !request[13]) ||
+               (size == 9 && request[11] == 1 && !request[12] && request[13] == 1) ||
+               (size == 12 && request[11] == 2 && !request[12] && request[13] == 2);
+    case 5: return size == 9 && !request[11] && request[12] >= 1 && request[12] <= 4 && request[13] == 1;
+    case 7: // Starlight: random, one color, or two colors.
+        return !request[11] && request[12] >= 1 && request[12] <= 3 &&
+               ((size == 6 && !request[13]) || (size == 9 && request[13] == 1) || (size == 12 && request[13] == 2));
+    default: return 0;
+    }
 }
 int32_t tartarusLightTransfer(uint32_t location, const uint8_t *request, uint8_t *response, uint32_t *actualLength) {
     if (!location || !request || !response || !actualLength) return kIOReturnBadArgument;
