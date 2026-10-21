@@ -19,7 +19,7 @@ final class LightController: ObservableObject {
     @Published var zoom=1.0
     @Published var previewPaused=false
     @Published var previewSpeed=1.0
-    @Published var previewTime=0.0
+    var previewTime=0.0
     @Published var previewMatrix=Array(repeating:StudioRenderer.black,count:24)
     @Published var inputReady=false
     @Published var undoStack:[StudioPreset]=[]
@@ -33,7 +33,7 @@ final class LightController: ObservableObject {
     var lightingHits:[LightingHit]=[]
     var previewHits:[LightingHit]=[]
     let lightingInput=LightingInput()
-    @Published var displayOff=false
+    @Published var displayOff=false { didSet { tick(forceFrame:true) } }
     var idleSeconds:() -> Double = {
         // HIDIdleTime includes keyboard, mouse and physical HID activity.
         let service=IOServiceGetMatchingService(kIOMainPortDefault,IOServiceMatching("IOHIDSystem"))
@@ -59,6 +59,12 @@ final class LightController: ObservableObject {
     @Published private(set) var preview = RGB.defaults[0]
     private var changes: AnyCancellable?
     private var ticker: Timer?
+    private var tickInterval: TimeInterval = 0
+    private var lastTick = ProcessInfo.processInfo.systemUptime
+    private var publishingPreview = false
+    private var previewOptions: LightingOptions?
+    private var previewPreset: StudioPreset?
+    private var previewDisplayOff: Bool?
     private var debounce: DispatchWorkItem?
     private let queue = DispatchQueue(label:"local.tartarus.lighting",qos:.userInitiated)
     private var generation = 0
@@ -80,11 +86,11 @@ final class LightController: ObservableObject {
         guard loadProfile else { return }
         load(); detect()
         changes = objectWillChange.sink { [weak self] in
+            guard self?.publishingPreview != true else { return }
             // Published sends before mutation; compare the complete profile on the next turn.
             DispatchQueue.main.async { self?.scheduleIfChanged() }
         }
-        ticker = Timer(timeInterval:0.1,repeats:true) { [weak self] _ in self?.tick() }
-        RunLoop.main.add(ticker!,forMode:.common)
+        configureTicker()
         scheduleIfChanged()
     }
     deinit { ticker?.invalidate(); debounce?.cancel() }
@@ -137,15 +143,41 @@ final class LightController: ObservableObject {
         if selectedLocation == 0 && found.count == 1 { selectedLocation = found[0] }
     }
     private var observed: LightProfile?
+    private func configureTicker() {
+        let layers = options.advanced ? draftPreset.layers : [options.quick]
+        let animated = options.enabled && layers.contains { layer in
+            layer.enabled && layer.effect.animated &&
+            (layer.group == nil || !(options.advanced && draftPreset.groups.contains { $0.id == layer.group && !$0.enabled }))
+        }
+        let interval: TimeInterval = animated ? 0.1 : 2
+        guard interval != tickInterval else { return }
+        ticker?.invalidate()
+        tickInterval = interval
+        ticker = Timer(timeInterval:interval,repeats:true) { [weak self] _ in self?.tick() }
+        RunLoop.main.add(ticker!,forMode:.common)
+    }
+    private func refreshPreview(force:Bool=false) {
+        let preset = options.advanced ? draftPreset : StudioPreset(layers:[options.quick])
+        if !force && previewOptions == options && previewPreset == preset && previewDisplayOff == displayOff { return }
+        previewOptions = options; previewPreset = preset; previewDisplayOff = displayOff
+        let matrix = renderedFrame(elapsed:previewTime,preview:true).matrix
+        publishingPreview = true
+        defer { publishingPreview = false }
+        if previewMatrix != matrix { previewMatrix = matrix }
+        if preview != matrix[0] { preview = matrix[0] }
+    }
     private func scheduleIfChanged() {
+        configureTicker()
+        refreshPreview()
         let p = profile
         guard p != observed else { return }
         guard p.valid else { status = NSLocalizedString("status.invalid_config", comment: ""); return }
         observed = p; generation += 1; cycling = false; sent = nil
         debounce?.cancel()
         cycleStart = ProcessInfo.processInfo.systemUptime
+        lastTick = cycleStart
         lightingHits=[];previewHits=[];previewTime=0
-        preview = p.effect == .off ? RGB(red:0,green:0,blue:0) : (p.effect == .spectrum && customCycle ? p.palette[0] : RGB(red:red,green:green,blue:blue))
+        refreshPreview(force:true)
         let task = DispatchWorkItem { [weak self] in
             guard let self = self, p.valid, !self.suspended else { return }
             let saved = self.save(p)
@@ -156,12 +188,12 @@ final class LightController: ObservableObject {
         }
         debounce = task; DispatchQueue.main.asyncAfter(deadline:.now()+0.25,execute:task)
     }
-    private func tick() {
+    private func tick(forceFrame:Bool=false) {
         guard !suspended else { return }
         let now = ProcessInfo.processInfo.systemUptime
-        if !previewPaused { previewTime += 0.1*previewSpeed }
-        previewMatrix=renderedFrame(elapsed:previewTime,preview:true).matrix
-        preview=previewMatrix[0]
+        if !previewPaused { previewTime += max(0,now-lastTick)*previewSpeed }
+        lastTick = now
+        refreshPreview(force:tickInterval < 1 || options.offWhenIdle)
         if now >= refreshAt {
             refreshAt = now + 2
             if needsLightingInput && connected {
@@ -181,6 +213,8 @@ final class LightController: ObservableObject {
             if !wasConnected { observed = nil; scheduleIfChanged(); return }
         }
         guard cycling, connected, !busy else { return }
+        // Static lighting is already stored on the device. Poll only for reconnection.
+        guard forceFrame || tickInterval < 1 || options.offWhenIdle else { return }
         let frame = renderedFrame(elapsed:now-cycleStart)
         guard frame != sent else { return }
         send(frame,generation:generation,isCycle:true,saved:true)
@@ -401,12 +435,12 @@ extension LightController {
         lightingInput.start(location:selectedLocation)
         inputReady=lightingInput.ready
     }
-    func restartPreview() { cycleStart=ProcessInfo.processInfo.systemUptime; lightingHits=[]; previewHits=[]; previewPaused=false; previewTime=0 }
+    func restartPreview() { cycleStart=ProcessInfo.processInfo.systemUptime; lightingHits=[]; previewHits=[]; previewPaused=false; previewTime=0; refreshPreview(force:true) }
     func renderedFrame(elapsed:Double,preview:Bool=false) -> LightProfile {
         var p=profile
         var preset=options.advanced ? draftPreset : StudioPreset(layers:[options.quick])
         if !options.advanced { preset.layers[0].mask=LightLayout.active.sorted() }
-        let idle=idleSeconds()
+        let idle=options.offWhenIdle ? idleSeconds() : 0
         let dark = !options.enabled || (displayOff && options.offWhenDisplayOff) || (options.offWhenIdle && idle >= options.idleMinutes*60)
         p.effect = .custom
         p.keyColors=StudioRenderer.render(preset,time:elapsed,hits:preview ? previewHits : lightingHits,brightness:dark ? 0 : options.brightness)

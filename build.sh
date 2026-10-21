@@ -31,9 +31,9 @@ enum VersionInfo {
 }
 SWIFT
 
-xcrun clang -target arm64-apple-macos13.0 -fmodules-cache-path="$task_cache/modules" \
+xcrun clang -O2 -target arm64-apple-macos13.0 -fmodules-cache-path="$task_cache/modules" \
     -c Sources/USBTransport.c -o "$task_cache/USBTransport.o"
-xcrun swiftc -target arm64-apple-macos13.0 -module-cache-path "$task_cache/modules" \
+xcrun swiftc -O -target arm64-apple-macos13.0 -module-cache-path "$task_cache/modules" \
     -import-objc-header Sources/USBTransport.h -parse-as-library \
     Sources/LightingStudio.swift Sources/StudioView.swift Sources/StudioChecks.swift Sources/Main.swift Sources/LightController.swift Sources/LightView.swift Sources/Theme.swift \
     Sources/StartupController.swift Sources/SystemSettingsView.swift Sources/CoreChecks.swift Sources/MappingEngine.swift \
