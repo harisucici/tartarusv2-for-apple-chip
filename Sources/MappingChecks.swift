@@ -55,14 +55,17 @@ func runMappingChecks() {
     precondition(try! JSONDecoder().decode(MappingProfile.self,from:saved).bindings.first?.target == 5)
     precondition(!autosave.running && !autosave.starting)
     autosave.running = true
+    precondition(!autosave.repeatTimerRunning)
     autosave.bindings[0].target = 6
     flushScheduled()
     autosave.process(usage:30,down:true,source:"held")
+    precondition(autosave.repeatTimerRunning)
     precondition(savedEvents.last?.code == 8 && savedEvents.last?.down == true)
     autosave.bindings[0].target = 999
     flushScheduled()
     precondition(try! JSONDecoder().decode(MappingProfile.self,from:Data(contentsOf:profileURL)).bindings.first?.target == 6)
     autosave.process(usage:30,down:false,source:"held")
+    precondition(!autosave.repeatTimerRunning)
     autosave.process(usage:30,down:true,source:"held")
     precondition(savedEvents.last?.code == 8 && savedEvents.last?.down == true)
     autosave.suspend(.lock)
@@ -80,6 +83,7 @@ func runMappingChecks() {
     macro.macro = [MacroStep(usage:4,delay:0.5),MacroStep(usage:5,delay:0)]
     macroController.bindings = [macro]
     macroController.process(usage:226,down:true,source:"test")
+    precondition(macroController.repeatTimerRunning)
     precondition(macroEvents.count == 1 && macroEvents[0].down)
     let base = ProcessInfo.processInfo.systemUptime
     macroController.advanceMacros(now:base+0.04)
@@ -114,10 +118,13 @@ func runMappingChecks() {
     precondition(e.key(usage:31,down:false,source:"2:31",bindings:overlap,now:2).count == 1)
     let ordinary = e.key(usage:4,down:true,source:"1:4",bindings:[],now:3)
     precondition(ordinary.count == 1 && ordinary[0].code == 0)
+    precondition(e.hasRepeatableKey)
     precondition(e.repeatEvent(now:3.1) == nil)
     precondition(e.repeatEvent(now:4)?.repeating == true)
     precondition(e.releaseAll().count == 1 && e.repeatEvent(now:10) == nil && e.releaseAll().isEmpty)
+    precondition(!e.hasRepeatableKey)
     _ = e.key(usage:30,down:true,source:"1:30",bindings:bindings,now:11)
+    precondition(!e.hasRepeatableKey)
     precondition(e.repeatEvent(now:12) == nil) // shortcuts are single-shot
     let released = e.releaseAll()
     precondition(released.count == 2 && released.last?.flags.isEmpty == true)

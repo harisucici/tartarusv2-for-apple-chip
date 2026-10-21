@@ -47,6 +47,7 @@ final class MappingController: ObservableObject {
     private var macroSources = Set<String>()
     private var timer: Timer?
     private var repeatTimer: Timer?
+    var repeatTimerRunning: Bool { repeatTimer != nil }
     // Used by the self-test only. Production always posts the engine's output.
     var onPhysicalLightingKey:((Int)->Void)?
     var eventSink: ((KeyOutput) -> Void)?
@@ -199,11 +200,6 @@ final class MappingController: ObservableObject {
                 if self.running && !AXIsProcessTrusted() { self.stop(); self.status = NSLocalizedString("status.accessibility_revoked", comment: "") }
                 else if !self.privileged.ping() { self.closeInput(); self.status = NSLocalizedString("status.helper_disconnected", comment: ""); self.recovering = true; self.scheduleReconnect() }
             }
-            repeatTimer = Timer.scheduledTimer(withTimeInterval:0.02,repeats:true) { [weak self] _ in
-                guard let self = self, self.running else { return }
-                self.advanceMacros(now:ProcessInfo.processInfo.systemUptime)
-                if let event = self.engine.repeatEvent(now:ProcessInfo.processInfo.systemUptime) { self.post(event) }
-            }
         } else if line.hasPrefix("access ") {
             serviceInputAccess = PermissionCheck(line:line)
         } else if line.hasPrefix("key ") {
@@ -233,6 +229,21 @@ final class MappingController: ObservableObject {
             return
         }
         for output in engine.key(usage:usage,down:down,source:source,bindings:currentBindings,now:ProcessInfo.processInfo.systemUptime) { post(output) }
+        updateRepeatTimer()
+    }
+    private func updateRepeatTimer() {
+        guard running && (engine.hasRepeatableKey || !macroRuns.isEmpty) else {
+            repeatTimer?.invalidate(); repeatTimer = nil
+            return
+        }
+        guard repeatTimer == nil else { return }
+        repeatTimer = Timer.scheduledTimer(withTimeInterval:0.02,repeats:true) { [weak self] _ in
+            guard let self = self, self.running else { return }
+            let now = ProcessInfo.processInfo.systemUptime
+            self.advanceMacros(now:now)
+            if let event = self.engine.repeatEvent(now:now) { self.post(event) }
+            self.updateRepeatTimer()
+        }
     }
     func advanceMacros(now: TimeInterval) {
         guard running else { return }
@@ -250,6 +261,7 @@ final class MappingController: ObservableObject {
             }
         }
         macroRuns.removeAll { $0.index >= $0.steps.count }
+        updateRepeatTimer()
     }
     private func post(_ output: KeyOutput) {
         if let sink = eventSink { sink(output); return }

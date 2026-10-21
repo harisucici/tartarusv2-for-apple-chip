@@ -141,6 +141,19 @@ func runCoreChecks() {
     precondition(Array(frames[3][25..<28]) == [0,0,255]) // wheel, not key 20
     precondition(frames[4][5] == 12 && frames[4][10] == 8)
     precondition(frames[4].withUnsafeBufferPointer { tartarusLightRequestValid($0.baseAddress!) } == 1)
+    var batch = frames.flatMap { $0 }
+    var batchResponse = [UInt8](repeating:0,count:90)
+    var batchLength: UInt32 = 0
+    func invalidBatch(_ count: UInt32) -> Bool {
+        batch.withUnsafeBufferPointer { requests in
+            batchResponse.withUnsafeMutableBufferPointer { reply in
+                tartarusLightTransferBatch(loc,requests.baseAddress!,count,reply.baseAddress!,&batchLength) == kIOReturnBadArgument
+            }
+        }
+    }
+    precondition(invalidBatch(0) && invalidBatch(6))
+    batch[4*90+10] = 9
+    precondition(invalidBatch(5)) // Validate every packet before touching USB.
     for (offset,value) in [(10,UInt8(4)),(12,UInt8(6)),(7,UInt8(4)),(31,UInt8(1))] {
         var malformed = frames[0]; malformed[offset] = value
         malformed[88] = malformed[2..<88].reduce(0,^)

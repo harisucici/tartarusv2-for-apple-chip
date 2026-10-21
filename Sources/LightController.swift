@@ -171,8 +171,10 @@ final class LightController: ObservableObject {
             (layer.group == nil || !(options.advanced && draftPreset.groups.contains { $0.id == layer.group && !$0.enabled }))
         }
     }
+    private var previewVisible: Bool {
+        NSApp?.isActive == true && (NSApp?.windows.contains { $0.isVisible && !$0.isMiniaturized && $0.level == .normal } ?? false)
+    }
     private func configureTicker() {
-        let previewVisible = NSApp?.isActive == true && (NSApp?.windows.contains { $0.isVisible && !$0.isMiniaturized && $0.level == .normal } ?? false)
         let animatePreview = (hardwareQuickEffect?.rawValue ?? 0) > 1 && previewVisible && !previewPaused
         let interval: TimeInterval = softwareAnimation || animatePreview ? 0.1 : 2
         guard interval != tickInterval else { return }
@@ -219,7 +221,7 @@ final class LightController: ObservableObject {
         let now = ProcessInfo.processInfo.systemUptime
         if !previewPaused { previewTime += max(0,now-lastTick)*previewSpeed }
         lastTick = now
-        refreshPreview(force:tickInterval < 1 || options.offWhenIdle)
+        if previewVisible { refreshPreview(force:tickInterval < 1 || options.offWhenIdle) }
         if now >= refreshAt {
             refreshAt = now + 2
             if needsLightingInput && connected {

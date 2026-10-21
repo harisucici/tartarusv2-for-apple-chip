@@ -66,6 +66,11 @@ final class MappingEngine {
     private var held: [String:Stroke] = [:]
     private var order: [String] = []
     private var repeatAt: TimeInterval = .infinity
+    var hasRepeatableKey: Bool {
+        guard let source = order.reversed().first(where: { held[$0]?.keys.contains { modifiers[$0.code] == nil } == true }),
+              let stroke = held[source], let key = stroke.keys.first else { return false }
+        return stroke.binding.flags.isEmpty && stroke.keys.count == 1 && key.usage != 57
+    }
     var repeatDelay: TimeInterval = 0.45
     var repeatInterval: TimeInterval = 0.04
     private let modifiers: [UInt16:CGEventFlags] = [59:.maskControl,62:.maskControl,56:.maskShift,60:.maskShift,58:.maskAlternate,61:.maskAlternate,55:.maskCommand,54:.maskCommand]

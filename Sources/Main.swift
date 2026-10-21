@@ -245,19 +245,16 @@ enum LightHardware {
     static func apply(_ p: LightProfile, location: UInt32, volatile: Bool = false) -> (ok:Bool,message:String) {
         guard p.valid, location != 0 else { return (false,NSLocalizedString("hw.please_select_device_and_color", comment: "")) }
         let packets = LightProtocol.packets(p,volatile:volatile)
-        let ds = devices(location:location)
-        guard !ds.isEmpty else { return (false,NSLocalizedString("hw.device_disconnected_waiting", comment: "")) }
-        for packet in packets {
-            var response = [UInt8](repeating:0,count:90)
-            var length: UInt32 = 0
-            let result = packet.withUnsafeBufferPointer { request in
-                response.withUnsafeMutableBufferPointer { reply in
-                    tartarusLightTransfer(location,request.baseAddress!,reply.baseAddress!,&length)
-                }
+        let requests = packets.flatMap { $0 }
+        var response = [UInt8](repeating:0,count:90)
+        var length: UInt32 = 0
+        let result = requests.withUnsafeBufferPointer { request in
+            response.withUnsafeMutableBufferPointer { reply in
+                tartarusLightTransferBatch(location,request.baseAddress!,UInt32(packets.count),reply.baseAddress!,&length)
             }
-            if result == kIOReturnSuccess && LightProtocol.acknowledges(response,length:Int(length),request:packet) {
-                continue
-            }
+        }
+        if result == kIOReturnNoDevice { return (false,NSLocalizedString("hw.device_disconnected_waiting", comment: "")) }
+        guard result == kIOReturnSuccess else {
             return (false,String(format: NSLocalizedString("hw.usb_not_acknowledged", comment: ""), hidError(result), Int(response[0]), Int(length)))
         }
         return (true,String(format:NSLocalizedString("hw.device_acknowledged", comment:""),p.effect.name))
