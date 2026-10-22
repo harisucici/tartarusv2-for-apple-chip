@@ -9,6 +9,9 @@ func runCoreChecks() {
     let packet = LightProtocol.packet(p)
     precondition(packet.count == 90 && packet[88] == 255)
     precondition(Array(packet.prefix(17)) == [0,31,0,0,0,9,15,2,1,5,1,0,0,1,255,0,0])
+    let brightnessPacket = LightProtocol.brightnessPacket(128)
+    precondition(brightnessPacket[5] == 3 && brightnessPacket[7] == 4 && brightnessPacket[10] == 128)
+    precondition(brightnessPacket.withUnsafeBufferPointer { tartarusLightRequestValid($0.baseAddress!) } == 1)
     var response = packet; response[0] = 2
     precondition(LightProtocol.acknowledges(response,length:90))
     response[88] ^= 1

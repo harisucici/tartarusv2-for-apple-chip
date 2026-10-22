@@ -21,6 +21,8 @@ struct LightingPage:View {
             else { lightingSettings }
             StatusStrip(text:c.status,active:c.connected).padding(12)
         }
+        .onAppear { c.setPreviewPageVisible(true) }
+        .onDisappear { c.setPreviewPageVisible(false) }
     }
     var lightingSettings:some View {
         ScrollView {
@@ -52,7 +54,7 @@ struct LightingPage:View {
                     }
                 }.frame(maxWidth:500)
                 VStack(spacing:16) {
-                    KeypadPreview(color:c.preview.color,keyColors:c.previewMatrix)
+                    KeypadPreview(color:c.preview.color,keyColors:c.previewMatrix).equatable()
                     Text(lightingText("livePreview")).font(.caption).foregroundStyle(.secondary)
                     inputNotice
                 }.frame(maxWidth:280)
@@ -101,6 +103,10 @@ struct EffectProperties:View {
                 if layer.effect == .spectrum {
                     Toggle(lightingText("customPalette"),isOn:field(\.spectrumPalette,fallback:false))
                 }
+                if layer.effect.animated && [.spectrum,.breathing].contains(layer.effect) {
+                    Toggle(lightingText("hsvBlending"),isOn:field(\.useHSVBlending,fallback:true))
+                        .help(lightingText("hsvBlendingHelp"))
+                }
                 if ![StudioEffect.spectrum,.wave,.wheel,.off].contains(layer.effect) || (layer.effect == .spectrum && layer.spectrumPalette) {
                     if layer.effect != .spectrum { Toggle(lightingText("random"),isOn:field(\.random,fallback:false)).disabled(layer.effect == .fire) }
                     ForEach(Array(layer.colors.enumerated()),id:\.offset) { index,_ in
@@ -116,6 +122,12 @@ struct EffectProperties:View {
                 if layer.effect.animated {
                     parameter("duration",value:field(\.duration,fallback:3),range:0.2...60,suffix:lightingText("seconds"))
                     parameter("speed",value:field(\.speed,fallback:1),range:0.1...5,suffix:"×")
+                }
+                if layerID == nil && layer.effect.supportsNativePlayback {
+                    Button(lightingText("restoreNative")) { edit { $0.restoreNativeParameters() } }
+                        .disabled(layer.nativeQuickEffect != nil)
+                    Text(lightingText(layer.nativeQuickEffect == nil ? "restoreNativeHint" : "nativeActive"))
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 if layer.effect == .wheel {
                     HStack {
@@ -303,7 +315,7 @@ struct StudioWorkspaceView:View {
         VStack(spacing:8) {
             Text(String(format:lightingText("selectionCount"),c.selectedLights.count)).font(.caption).foregroundStyle(.secondary)
             HStack {
-                Button { c.previewPaused.toggle() } label:{Image(systemName:c.previewPaused ? "play.fill" : "pause.fill")}.help(lightingText("pausePreview"))
+                Button { c.togglePreviewPlayback() } label:{Image(systemName:c.previewPaused ? "play.fill" : "pause.fill")}.help(lightingText("pausePreview"))
                 Button { c.restartPreview() } label:{Image(systemName:"backward.end")}.help(lightingText("restart"))
                 Picker(lightingText("previewSpeed"),selection:$c.previewSpeed) { Text("0.5×").tag(0.5);Text("1×").tag(1.0);Text("2×").tag(2.0) }.labelsHidden().frame(width:65)
                 Spacer()
@@ -335,7 +347,6 @@ struct StudioCanvas:View {
                         if index == 22 { Image(systemName:"computermouse").font(.system(size:15*c.zoom)) }
                         Text(LightLayout.label(index)).font(.system(size:(index == 22 ? 8 : 12)*c.zoom,weight:.medium,design:.monospaced))
                     }.foregroundStyle(tint))
-                    .shadow(color:tint.opacity(0.25),radius:8*c.zoom)
                     .frame(width:box.width,height:box.height).offset(x:box.minX,y:box.minY)
                     .accessibilityElement(children:.ignore).accessibilityLabel(LightLayout.label(index))
                     .accessibilityAddTraits(.isButton).accessibilityAction { c.chooseLights([index]) }
@@ -344,7 +355,9 @@ struct StudioCanvas:View {
                 Rectangle().fill(RazerTheme.green.opacity(0.1)).overlay(Rectangle().stroke(RazerTheme.green,lineWidth:1)).frame(width:box.width,height:box.height).offset(x:box.minX,y:box.minY)
             }
             Text(lightingText("canvasFooter")).font(.system(size:9*c.zoom,design:.monospaced)).foregroundStyle(.secondary).offset(x:24*c.zoom,y:342*c.zoom)
-        }.contentShape(Rectangle()).gesture(DragGesture(minimumDistance:0).onChanged { value in
+        }
+        .drawingGroup()  // Rasterize the static canvas to reduce view updates
+        .contentShape(Rectangle()).gesture(DragGesture(minimumDistance:0).onChanged { value in
             if c.dragOrigin == nil {
                 c.dragOrigin=value.startLocation;c.dragBaseSelection=c.selectedLights;c.dragSelection=[]
                 if c.studioTool == "pen" || c.studioTool == "bucket" { c.recordStudio();c.inLightingGesture=true }
@@ -371,11 +384,175 @@ struct StudioCanvas:View {
 struct EffectCataloguePicker:View {
     @Binding var selection:StudioEffect
     var body:some View {
-        Picker(lightingText("effect"),selection:$selection) {
-            ForEach(StudioEffect.referenceCases) { Text($0.name).tag($0) }
-            Section(lightingText("extraEffects")) {
-                ForEach(StudioEffect.extraCases) { Text($0.name).tag($0) }
+        VStack(alignment:.leading,spacing:12) {
+            Text(lightingText("effect")).font(.caption.bold()).foregroundStyle(.secondary)
+
+            // Visual effect grid with thumbnails
+            LazyVGrid(columns:[GridItem(.flexible()),GridItem(.flexible()),GridItem(.flexible())],spacing:8) {
+                ForEach(StudioEffect.referenceCases) { effect in
+                    EffectThumbnail(effect:effect,selected:selection == effect)
+                        .equatable()
+                        .onTapGesture { selection = effect }
+                }
+            }
+            .id(selection)
+
+            if !StudioEffect.extraCases.isEmpty {
+                Menu(lightingText("extraEffects")) {
+                    ForEach(StudioEffect.extraCases) { effect in
+                        Button(effect.name) { selection = effect }
+                    }
+                }
+                .font(.caption)
+            }
+
+            // Show selected effect name
+            HStack {
+                Text(selection.name).font(.system(size:11,weight:.medium))
+                Spacer()
+            }.padding(.top,4)
+        }
+    }
+}
+
+// Visual thumbnail for effect preview
+struct EffectThumbnail: View, Equatable {
+    let effect: StudioEffect
+    let selected: Bool
+
+    static func == (lhs: EffectThumbnail, rhs: EffectThumbnail) -> Bool {
+        lhs.effect == rhs.effect && lhs.selected == rhs.selected
+    }
+
+    var body: some View {
+        VStack(spacing:4) {
+            ZStack {
+                RoundedRectangle(cornerRadius:6)
+                    .fill(Color.black.opacity(0.6))
+                    .frame(width:50,height:36)
+
+                EffectPreviewAnimation(effect: effect, phase: 0)
+                    .frame(width: 44, height: 30)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius:6)
+                    .stroke(selected ? RazerTheme.green : .clear, lineWidth: 2)
+            )
+
+            Text(effect.name)
+                .font(.system(size: 8))
+                .foregroundStyle(selected ? RazerTheme.green : .secondary)
+                .lineLimit(1)
+        }
+    }
+}
+
+// Animated preview for different effects
+struct EffectPreviewAnimation: View {
+    let effect: StudioEffect
+    let phase: Double
+
+    var body: some View {
+        switch effect {
+        case .solid:
+            Rectangle().fill(Color.red)
+        case .spectrum:
+            LinearGradient(
+                colors:[.red,.orange,.yellow,.green,.blue,.purple],
+                startPoint:.leading,endPoint:.trailing
+            )
+        case .wave:
+            WaveShape(phase:phase).stroke(Color.green,lineWidth:2)
+        case .breathing:
+            Rectangle().fill(Color.blue.opacity(0.5+0.5*sin(phase*2*Double.pi)))
+        case .reactive:
+            HStack(spacing:2) {
+                ForEach(0..<3,id:\.self) { i in
+                    Rectangle().fill(Color.cyan.opacity(i == 0 ? 1 : 0.3))
+                }
+            }
+        case .starlight:
+            StarlightPreview(phase:phase)
+        case .ripple:
+            RipplePreview(phase:phase)
+        case .wheel:
+            Circle().fill(
+                AngularGradient(
+                    colors:[.red,.yellow,.green,.blue,.purple,.red],
+                    center:.center,
+                    startAngle:.degrees(phase*360),
+                    endAngle:.degrees(phase*360+360)
+                )
+            )
+        case .fire:
+            FirePreview(phase:phase)
+        case .off:
+            Rectangle().fill(Color.black)
+        }
+    }
+}
+
+struct WaveShape: Shape {
+    var phase: Double
+    var animatableData: Double {
+        get { phase }
+        set { phase = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x:0,y:rect.midY))
+        for x in stride(from:0,through:rect.width,by:1) {
+            let relativeX = x / rect.width
+            let y = rect.midY + sin((relativeX + phase) * 2 * Double.pi) * rect.height * 0.3
+            path.addLine(to: CGPoint(x:x,y:y))
+        }
+        return path
+    }
+}
+
+struct StarlightPreview: View {
+    let phase: Double
+    var body: some View {
+        ZStack {
+            ForEach(0..<5,id:\.self) { i in
+                let offset = Double(i) * 0.2
+                let brightness = max(0, sin((phase + offset) * Double.pi))
+                Circle()
+                    .fill(Color.white)
+                    .frame(width:3,height:3)
+                    .offset(x:CGFloat(i * 8 - 16),y:CGFloat(sin(Double(i)) * 8))
+                    .opacity(brightness)
             }
         }
+    }
+}
+
+struct RipplePreview: View {
+    let phase: Double
+    var body: some View {
+        ZStack {
+            ForEach(0..<3,id:\.self) { i in
+                let scale = (phase + Double(i) * 0.33).truncatingRemainder(dividingBy:1)
+                Circle()
+                    .stroke(Color.cyan.opacity(1 - scale),lineWidth:1)
+                    .scaleEffect(scale * 1.5)
+            }
+        }
+    }
+}
+
+struct FirePreview: View {
+    let phase: Double
+    var body: some View {
+        LinearGradient(
+            colors:[
+                Color(red:1,green:0.12,blue:0),
+                Color(red:1,green:0.8,blue:0),
+                Color(red:1,green:0.12,blue:0).opacity(0.5 + 0.5 * sin(phase * Double.pi * 4))
+            ],
+            startPoint:.bottom,endPoint:.top
+        )
     }
 }

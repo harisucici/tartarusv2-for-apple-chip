@@ -62,6 +62,7 @@ final class MappingController: ObservableObject {
     private var retryTask: DispatchWorkItem?
     private var retryCount = 0
     private var recovering = false
+    private var lastSystemCheck: TimeInterval = 0
     var path: URL { profileURL }
     init(loadProfile: Bool = true, profileURL: URL? = nil, autoSave: Bool? = nil) {
         self.profileURL = profileURL ?? URL(fileURLWithPath:NSHomeDirectory()).appendingPathComponent("Library/Application Support/TartarusControl/mapping.json")
@@ -129,6 +130,11 @@ final class MappingController: ObservableObject {
             (input ? NSLocalizedString("status.authorized", comment: "") : NSLocalizedString("status.not_authorized", comment: "")))
     }
     func refreshSystemChecks() {
+        // 1-second debounce to prevent recursive calls
+        let now = ProcessInfo.processInfo.systemUptime
+        guard now - lastSystemCheck >= 1.0 else { return }
+        lastSystemCheck = now
+
         checkPermissions()
         guard !starting, !checkingService else { return }
         if running {
@@ -142,7 +148,7 @@ final class MappingController: ObservableObject {
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.checkingService = false
-                if self.running || self.starting { self.refreshSystemChecks(); return }
+                // Remove recursive call; let external timer control refresh
                 self.serviceState = result.state; self.serviceInputAccess = result.access
             }
         }
@@ -195,7 +201,7 @@ final class MappingController: ObservableObject {
             refreshSystemChecks()
             recovering = false; retryCount = 0
             status = String(format:NSLocalizedString("status.mapping_enabled", comment: ""), String(format:"%08X",selectedLocation))
-            timer = Timer.scheduledTimer(withTimeInterval:1,repeats:true) { [weak self] _ in
+            timer = Timer.scheduledTimer(withTimeInterval:10,repeats:true) { [weak self] _ in
                 guard let self = self else { return }
                 if self.running && !AXIsProcessTrusted() { self.stop(); self.status = NSLocalizedString("status.accessibility_revoked", comment: "") }
                 else if !self.privileged.ping() { self.closeInput(); self.status = NSLocalizedString("status.helper_disconnected", comment: ""); self.recovering = true; self.scheduleReconnect() }

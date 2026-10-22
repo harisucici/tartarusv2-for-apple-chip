@@ -164,6 +164,14 @@ struct LightProfile: Codable, Equatable {
 }
 enum LightProtocol {
     static let vendor = 5426, product = 555
+    // Tartarus V2 extended matrix brightness: 0F/04, variable store 1, LED 0.
+    static func brightnessPacket(_ brightness: UInt8) -> [UInt8] {
+        var b = [UInt8](repeating:0,count:90)
+        b[1] = 0x1f; b[5] = 3; b[6] = 0x0f; b[7] = 4
+        b[8] = 1; b[10] = brightness
+        b[88] = b[2..<88].reduce(0,^)
+        return b
+    }
     static func matching(location: UInt32? = nil) -> [String:Any] {
         var d: [String:Any] = [kIOHIDVendorIDKey:vendor,kIOHIDProductIDKey:product]
         if let location = location { d[kIOHIDLocationIDKey] = location }
@@ -235,6 +243,8 @@ enum LightProtocol {
 func hidError(_ code: IOReturn) -> String { String(format:"0x%08x",UInt32(bitPattern:code)) }
 
 enum LightHardware {
+    // Called only on LightController's serial lighting queue.
+    private static var brightnessByLocation: [UInt32:UInt8] = [:]
     static func devices(location: UInt32? = nil) -> [IOHIDDevice] {
         let m = IOHIDManagerCreate(kCFAllocatorDefault,0)
         IOHIDManagerSetDeviceMatching(m,LightProtocol.matching(location:location) as CFDictionary)
@@ -244,7 +254,9 @@ enum LightHardware {
     static func number(_ d: IOHIDDevice,_ key: String) -> Int { (IOHIDDeviceGetProperty(d,key as CFString) as? NSNumber)?.intValue ?? 0 }
     static func apply(_ p: LightProfile, location: UInt32, volatile: Bool = false) -> (ok:Bool,message:String) {
         guard p.valid, location != 0 else { return (false,NSLocalizedString("hw.please_select_device_and_color", comment: "")) }
-        let packets = LightProtocol.packets(p,volatile:volatile)
+        let desiredBrightness: UInt8 = p.effect == .custom ? 255 : UInt8(((p.lightingOptions?.brightness ?? 1)*255).rounded())
+        let brightnessChanged = brightnessByLocation[location] != desiredBrightness
+        let packets = (brightnessChanged ? [LightProtocol.brightnessPacket(desiredBrightness)] : []) + LightProtocol.packets(p,volatile:volatile)
         let requests = packets.flatMap { $0 }
         var response = [UInt8](repeating:0,count:90)
         var length: UInt32 = 0
@@ -255,8 +267,10 @@ enum LightHardware {
         }
         if result == kIOReturnNoDevice { return (false,NSLocalizedString("hw.device_disconnected_waiting", comment: "")) }
         guard result == kIOReturnSuccess else {
+            brightnessByLocation.removeValue(forKey:location)
             return (false,String(format: NSLocalizedString("hw.usb_not_acknowledged", comment: ""), hidError(result), Int(response[0]), Int(length)))
         }
+        brightnessByLocation[location] = desiredBrightness
         return (true,String(format:NSLocalizedString("hw.device_acknowledged", comment:""),p.effect.name))
     }
 }

@@ -5,7 +5,7 @@ import Combine
 struct SystemSettingsView: View {
     @ObservedObject var mapping: MappingController
     @ObservedObject var startup: StartupController
-    private let refreshTimer = Timer.publish(every:3,on:.main,in:.common).autoconnect()
+    @State private var refreshTimer: AnyCancellable?
     var busy: Bool { mapping.running || mapping.starting }
     func text(_ key: String) -> String { NSLocalizedString(key,comment:"") }
     func refresh() { mapping.refreshSystemChecks(); startup.refresh() }
@@ -56,8 +56,16 @@ struct SystemSettingsView: View {
                 }
             }.padding(28)
         }
-        .onAppear { refresh() }
-        .onReceive(refreshTimer) { _ in refresh() }
+        .onAppear {
+            refresh()
+            refreshTimer = Timer.publish(every: 3, on: .main, in: .common)
+                .autoconnect()
+                .sink { _ in refresh() }
+        }
+        .onDisappear {
+            refreshTimer?.cancel()
+            refreshTimer = nil
+        }
         .onReceive(NotificationCenter.default.publisher(for:NSApplication.didBecomeActiveNotification)) { _ in refresh() }
     }
     func checkRow(_ title: String,state: String,good: Bool) -> some View {

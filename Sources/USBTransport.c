@@ -19,6 +19,11 @@ int32_t tartarusLightRequestValid(const uint8_t *request) {
     uint8_t crc = 0;
     for (int i=2;i<88;i++) crc ^= request[i];
     if (request[0] || request[1] != 0x1f || request[6] != 15 || request[88] != crc) return 0;
+    if (request[7] == 4) {
+        if (request[5] != 3 || request[8] != 1 || request[9] != 0) return 0;
+        for (int i=11;i<88;i++) if (request[i]) return 0;
+        return 1;
+    }
     if (request[7] == 3) {
         if (request[5] != 0x47 || request[8] || request[9] || request[10] > 3 || request[11] != 0 || request[12] != 5) return 0;
         for (int i=31;i<88;i++) if (request[i]) return 0;
@@ -49,7 +54,7 @@ int32_t tartarusLightRequestValid(const uint8_t *request) {
     }
 }
 int32_t tartarusLightTransferBatch(uint32_t location, const uint8_t *requests, uint32_t count, uint8_t *response, uint32_t *actualLength) {
-    if (!location || !requests || !response || !actualLength || count < 1 || count > 5) return kIOReturnBadArgument;
+    if (!location || !requests || !response || !actualLength || count < 1 || count > 6) return kIOReturnBadArgument;
     *actualLength = 0;
     for (uint32_t i=0;i<count;i++) if (!tartarusLightRequestValid(requests+90*i)) return kIOReturnBadArgument;
     io_iterator_t iterator = 0;
@@ -74,7 +79,7 @@ int32_t tartarusLightTransferBatch(uint32_t location, const uint8_t *requests, u
         transfer.bmRequestType = 0x21; transfer.bRequest = 9;
         transfer.wValue = 0x0300; transfer.wIndex = 2;
         transfer.wLength = 90;
-        transfer.noDataTimeout = 500; transfer.completionTimeout = 1000;
+        transfer.noDataTimeout = 1000; transfer.completionTimeout = 2000;
         for (uint32_t i=0;i<count;i++) {
             const uint8_t *request = requests+90*i;
             uint8_t payload[90]; memcpy(payload,request,90);

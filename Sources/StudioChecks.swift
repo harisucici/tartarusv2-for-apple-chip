@@ -103,7 +103,21 @@ func runStudioChecks() {
         native.options.quick=StudioLayer(effect:effect)
         precondition(native.renderedFrame(elapsed:0).effect == hardware)
         precondition(native.renderedFrame(elapsed:0,preview:true).effect == .custom)
+        var changed=native.options.quick
+        changed.speed=2; changed.opacity=0.5; changed.startOnKey=true
+        changed.delay=1; changed.repeatCount=2; changed.group=UUID()
+        changed.duration=20; changed.random=true; changed.spectrumPalette=true
+        changed.colors=[red,blue,RGB(red:0,green:1,blue:0)]
+        changed.angle=90; changed.width=2; changed.centerX=1; changed.centerY=1
+        precondition(changed.nativeQuickEffect == nil)
+        changed.restoreNativeParameters()
+        precondition(changed.nativeQuickEffect == hardware && changed.valid)
+        precondition(changed.colors.first == red)
     }
+    var unsupported=StudioLayer(effect:.wheel); unsupported.speed=2
+    let originalUnsupported=unsupported
+    unsupported.restoreNativeParameters()
+    precondition(unsupported == originalUnsupported && unsupported.nativeQuickEffect == nil)
     native.options.quick=StudioLayer(effect:.reactive)
     precondition(native.needsLightingInput)
     native.options.quick.speed=1.5
@@ -112,7 +126,7 @@ func runStudioChecks() {
     native.options.quick.spectrumPalette=true
     precondition(native.renderedFrame(elapsed:0).effect == .custom)
     native.options.quick.spectrumPalette=false; native.options.brightness=0.5
-    precondition(native.renderedFrame(elapsed:0).effect == .custom)
+    precondition(native.renderedFrame(elapsed:0).effect == .spectrum)
     var bad=preset;bad.layers[0].mask=[24];precondition(!bad.valid)
     bad=preset;bad.layers[0].group=UUID();precondition(!bad.valid)
     bad=preset;bad.layers[0].speed = .nan;precondition(!bad.valid)

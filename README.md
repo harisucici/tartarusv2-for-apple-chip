@@ -53,7 +53,7 @@ The local signature is not Apple notarization. Rebuilding or replacing the app c
 5. In spectrum mode, choose **完整色谱** (Full spectrum) for the device's built-in effect, or **自定义颜色** (Custom colors).
 6. For a custom cycle, edit each swatch, use **添加颜色** (Add color), the minus button to delete, and the up arrow to reorder. At least two colors remain; at most eight are allowed. **一轮时长** sets the duration of a complete cycle.
 
-Compatible quick effects at full brightness and default playback settings are sent once as device modes. Custom timing, lower brightness, advanced layers, ripple, wheel, fire, and custom color cycling use software rendering and may send up to ten volatile frames per second. The device's built-in animation timing may differ from the preview. Lighting alone does not require Accessibility or an administrator reader; reactive previews and input-driven software effects may request Input Monitoring.
+Compatible quick effects at default playback settings run as device modes, with brightness set on the device. Use **Restore device-supported settings** in a compatible quick effect to return custom timing and playback settings to its native mode. Custom timing, advanced layers, ripple, wheel, fire, and custom color cycling use software rendering and may send up to ten volatile frames per second. The device's built-in animation timing may differ from the preview. Lighting alone does not require Accessibility or an administrator reader; reactive previews and input-driven software effects may request Input Monitoring.
 
 ## Tutorial: permissions and remapping
 

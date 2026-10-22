@@ -400,3 +400,7 @@
 "studio.zoom" = "缩放";
 "studio.removeColor" = "移除颜色";
 "studio.seconds" = "秒";
+
+"studio.restoreNative" = "还原设备支持的参数";
+"studio.restoreNativeHint" = "恢复后由键盘自行播放；自定义速度、配色或叠层仍需 Mac 逐帧发送。";
+"studio.nativeActive" = "当前参数由键盘自行播放，无需持续发送画面。";

@@ -45,9 +45,14 @@ struct PageHeading: View {
         }
     }
 }
-struct KeypadPreview: View {
+struct KeypadPreview: View, Equatable {
     var color: Color
     var keyColors:[RGB]? = nil
+
+    static func == (lhs: KeypadPreview, rhs: KeypadPreview) -> Bool {
+        lhs.color == rhs.color && lhs.keyColors == rhs.keyColors
+    }
+
     var body: some View {
         VStack(spacing:20) {
             HStack { Text("TARTARUS").font(.system(size:10,weight:.bold,design:.monospaced)).tracking(3); Spacer(); Text("V2").foregroundStyle(RazerTheme.green).font(.caption.bold()) }

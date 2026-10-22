@@ -400,3 +400,7 @@
 "studio.zoom" = "Zoom";
 "studio.removeColor" = "Remove color";
 "studio.seconds" = "seconds";
+
+"studio.restoreNative" = "Restore device-supported settings";
+"studio.restoreNativeHint" = "The keyboard will animate on its own. Custom speed, palette, or layers require Mac-driven frames.";
+"studio.nativeActive" = "The keyboard is animating these settings without continuous frames.";
