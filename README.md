@@ -12,7 +12,7 @@ These READMEs are translated; the application interface is currently in Simplifi
 
 ## Features and requirements
 
-- Solid color, lights off, built-in spectrum, and custom color cycling.
+- Solid color, lights off, device-run spectrum, wave, breathing, reactive, and starlight effects, plus software-rendered custom lighting.
 - Lighting changes are saved and applied automatically, including on launch and reconnection to the selected USB location.
 - Custom cycling: 2–8 ordered colors, smooth transitions, 2–60 seconds per complete cycle.
 - One source key can hold up to four target keys together, plus Command, Shift, Option and Control.
@@ -53,7 +53,7 @@ The local signature is not Apple notarization. Rebuilding or replacing the app c
 5. In spectrum mode, choose **完整色谱** (Full spectrum) for the device's built-in effect, or **自定义颜色** (Custom colors).
 6. For a custom cycle, edit each swatch, use **添加颜色** (Add color), the minus button to delete, and the up arrow to reorder. At least two colors remain; at most eight are allowed. **一轮时长** sets the duration of a complete cycle.
 
-Custom cycling runs in software and requires the app to remain open. It sends at most ten volatile color updates per second; quitting or sleeping stops updates and leaves the last color. The built-in spectrum effect runs on the device. Lighting alone does not require Accessibility, Input Monitoring, or an administrator reader.
+Compatible quick effects at default playback settings run as device modes, with brightness set on the device. Use **Restore device-supported settings** in a compatible quick effect to return custom timing and playback settings to its native mode. Custom timing, advanced layers, ripple, wheel, fire, and custom color cycling use software rendering and may send up to ten volatile frames per second. The device's built-in animation timing may differ from the preview. Lighting alone does not require Accessibility or an administrator reader; reactive previews and input-driven software effects may request Input Monitoring.
 
 ## Tutorial: permissions and remapping
 

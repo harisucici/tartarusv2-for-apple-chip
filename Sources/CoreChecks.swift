@@ -9,6 +9,9 @@ func runCoreChecks() {
     let packet = LightProtocol.packet(p)
     precondition(packet.count == 90 && packet[88] == 255)
     precondition(Array(packet.prefix(17)) == [0,31,0,0,0,9,15,2,1,5,1,0,0,1,255,0,0])
+    let brightnessPacket = LightProtocol.brightnessPacket(128)
+    precondition(brightnessPacket[5] == 3 && brightnessPacket[7] == 4 && brightnessPacket[10] == 128)
+    precondition(brightnessPacket.withUnsafeBufferPointer { tartarusLightRequestValid($0.baseAddress!) } == 1)
     var response = packet; response[0] = 2
     precondition(LightProtocol.acknowledges(response,length:90))
     response[88] ^= 1
@@ -36,6 +39,31 @@ func runCoreChecks() {
         var x = p; x.effect = mode
         let data = LightProtocol.packet(x)
         precondition(data[5] == 6 && data[10] == UInt8(mode.rawValue))
+    }
+    for (studio,hardware) in [(StudioEffect.wave,LightEffect.wave),(.breathing,.breathing),(.reactive,.reactive),(.starlight,.starlight)] {
+        var options=LightingOptions(); options.quick=StudioLayer(effect:studio)
+        var x=p; x.effect=hardware; x.lightingOptions=options
+        let data=LightProtocol.packet(x)
+        precondition(data[10] == UInt8(hardware.rawValue))
+        precondition(data.withUnsafeBufferPointer { tartarusLightRequestValid($0.baseAddress!) } == 1)
+        var malformed=data; malformed[13]=9; malformed[88]=malformed[2..<88].reduce(0,^)
+        precondition(malformed.withUnsafeBufferPointer { tartarusLightRequestValid($0.baseAddress!) } == 0)
+    }
+    var nativeOptions=LightingOptions(); nativeOptions.quick=StudioLayer(effect:.wave)
+    var native=p; native.effect = .wave; native.lightingOptions=nativeOptions
+    precondition(LightProtocol.packet(native)[11] == 2)
+    nativeOptions.quick.angle=180; native.lightingOptions=nativeOptions
+    precondition(LightProtocol.packet(native)[11] == 1)
+    for effect in [StudioEffect.breathing,.starlight] {
+        nativeOptions.quick=StudioLayer(effect:effect)
+        nativeOptions.quick.colors=[RGB(red:1,green:0,blue:0),RGB(red:0,green:0,blue:1)]
+        native.effect=effect == .breathing ? .breathing : .starlight
+        native.lightingOptions=nativeOptions
+        let dual=LightProtocol.packet(native)
+        precondition(dual[5] == 12 && dual.withUnsafeBufferPointer { tartarusLightRequestValid($0.baseAddress!) } == 1)
+        nativeOptions.quick.random=true; native.lightingOptions=nativeOptions
+        let random=LightProtocol.packet(native,volatile:true)
+        precondition(random[5] == 6 && random.withUnsafeBufferPointer { tartarusLightRequestValid($0.baseAddress!) } == 1)
     }
     var invalid = p; invalid.red = 1.1
     precondition(!invalid.valid)
@@ -116,6 +144,19 @@ func runCoreChecks() {
     precondition(Array(frames[3][25..<28]) == [0,0,255]) // wheel, not key 20
     precondition(frames[4][5] == 12 && frames[4][10] == 8)
     precondition(frames[4].withUnsafeBufferPointer { tartarusLightRequestValid($0.baseAddress!) } == 1)
+    var batch = frames.flatMap { $0 }
+    var batchResponse = [UInt8](repeating:0,count:90)
+    var batchLength: UInt32 = 0
+    func invalidBatch(_ count: UInt32) -> Bool {
+        batch.withUnsafeBufferPointer { requests in
+            batchResponse.withUnsafeMutableBufferPointer { reply in
+                tartarusLightTransferBatch(loc,requests.baseAddress!,count,reply.baseAddress!,&batchLength) == kIOReturnBadArgument
+            }
+        }
+    }
+    precondition(invalidBatch(0) && invalidBatch(6))
+    batch[4*90+10] = 9
+    precondition(invalidBatch(5)) // Validate every packet before touching USB.
     for (offset,value) in [(10,UInt8(4)),(12,UInt8(6)),(7,UInt8(4)),(31,UInt8(1))] {
         var malformed = frames[0]; malformed[offset] = value
         malformed[88] = malformed[2..<88].reduce(0,^)

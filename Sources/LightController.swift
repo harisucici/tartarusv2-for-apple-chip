@@ -19,7 +19,7 @@ final class LightController: ObservableObject {
     @Published var zoom=1.0
     @Published var previewPaused=false
     @Published var previewSpeed=1.0
-    @Published var previewTime=0.0
+    var previewTime=0.0
     @Published var previewMatrix=Array(repeating:StudioRenderer.black,count:24)
     @Published var inputReady=false
     @Published var undoStack:[StudioPreset]=[]
@@ -33,14 +33,22 @@ final class LightController: ObservableObject {
     var lightingHits:[LightingHit]=[]
     var previewHits:[LightingHit]=[]
     let lightingInput=LightingInput()
-    @Published var displayOff=false
-    var idleSeconds:() -> Double = {
-        // HIDIdleTime includes keyboard, mouse and physical HID activity.
+    @Published var displayOff=false { didSet { tick(forceFrame:true) } }
+    var idleSeconds:() -> Double = { 0 }  // overridden by self-test; default uses IOKit with 1s cache
+    private func _defaultIdleSeconds() -> Double {
+        let now = ProcessInfo.processInfo.systemUptime
+        if now - lastIdleCheck < 1.0 { return cachedIdleSeconds }
         let service=IOServiceGetMatchingService(kIOMainPortDefault,IOServiceMatching("IOHIDSystem"))
-        guard service != 0 else { return 0 }
+        guard service != 0 else {
+            lastIdleCheck = now; cachedIdleSeconds = 0; return 0
+        }
         defer { IOObjectRelease(service) }
-        guard let value=IORegistryEntryCreateCFProperty(service,"HIDIdleTime" as CFString,kCFAllocatorDefault,0)?.takeRetainedValue() as? NSNumber else { return 0 }
-        return value.doubleValue / 1_000_000_000
+        guard let value=IORegistryEntryCreateCFProperty(service,"HIDIdleTime" as CFString,kCFAllocatorDefault,0)?.takeRetainedValue() as? NSNumber else {
+            lastIdleCheck = now; cachedIdleSeconds = 0; return 0
+        }
+        let result = value.doubleValue / 1_000_000_000
+        lastIdleCheck = now; cachedIdleSeconds = result
+        return result
     }
     @Published var red = 0.27
     @Published var green = 1.0
@@ -54,37 +62,53 @@ final class LightController: ObservableObject {
     @Published var customCycle = false
     @Published var locations: [UInt32] = []
     @Published var selectedLocation: UInt32 = 0
-    @Published private(set) var busy = false
+    private(set) var busy = false
     @Published var status = NSLocalizedString("status.waiting_for_device", comment: "")
     @Published private(set) var preview = RGB.defaults[0]
     private var changes: AnyCancellable?
     private var ticker: Timer?
+    private var tickInterval: TimeInterval = 0
+    private var lastTick = ProcessInfo.processInfo.systemUptime
+    private var lastPreviewFrameAt: TimeInterval = 0
+    private var previewAnimationUntil: TimeInterval = 0
+    private var previewPageVisible = false
+    private var publishingPreview = false
+    private var previewOptions: LightingOptions?
+    private var previewPreset: StudioPreset?
+    private var previewDisplayOff: Bool?
     private var debounce: DispatchWorkItem?
-    private let queue = DispatchQueue(label:"local.tartarus.lighting",qos:.userInitiated)
+    private let queue = DispatchQueue(label:"local.tartarus.lighting",qos:.utility)
     private var generation = 0
     var cycleStart: TimeInterval = 0
     private var cycling = false
+    private var inputAnimationUntil: TimeInterval = 0
     private var refreshAt: TimeInterval = 0
     private var sent: LightProfile?
     private var suspended = false
     private var inputRequested=false
     private var persistenceError:String?
     private let profileURL:URL?
+    private var lastIdleCheck: TimeInterval = 0
+    private var cachedIdleSeconds: Double = 0
     var profile: LightProfile { LightProfile(red:red,green:green,blue:blue,effect:effect,location:selectedLocation,cycleColors:cycleColors,cycleSeconds:cycleSeconds,customCycle:customCycle,keyColors:keyColors,lightingOptions:options,lightingWorkspace:workspace) }
     var connected: Bool { locations.contains(selectedLocation) && selectedLocation != 0 }
     var path: URL { profileURL ?? URL(fileURLWithPath:NSHomeDirectory()).appendingPathComponent("Library/Application Support/TartarusLight/lights.json") }
     init(loadProfile: Bool = true,profileURL:URL? = nil) {
         self.profileURL=profileURL
+        idleSeconds = { [weak self] in self?._defaultIdleSeconds() ?? 0 }
         draftPreset=workspace.preset; selectedLayerID=draftPreset.layers.first?.id
         lightingInput.onHit = { [weak self] in self?.lightingHit($0) }
         guard loadProfile else { return }
         load(); detect()
-        changes = objectWillChange.sink { [weak self] in
-            // Published sends before mutation; compare the complete profile on the next turn.
-            DispatchQueue.main.async { self?.scheduleIfChanged() }
-        }
-        ticker = Timer(timeInterval:0.1,repeats:true) { [weak self] _ in self?.tick() }
-        RunLoop.main.add(ticker!,forMode:.common)
+        // Throttled hardware updates - prevents spamming the device
+        changes = objectWillChange
+            .throttle(for: .milliseconds(500), scheduler: DispatchQueue.main, latest: true)
+            .sink { [weak self] in
+                guard self?.publishingPreview != true else { return }
+                // Published sends before mutation; compare the complete profile on the next turn.
+                DispatchQueue.main.async { self?.scheduleIfChanged() }
+            }
+        configureTicker()
         scheduleIfChanged()
     }
     deinit { ticker?.invalidate(); debounce?.cancel() }
@@ -137,15 +161,67 @@ final class LightController: ObservableObject {
         if selectedLocation == 0 && found.count == 1 { selectedLocation = found[0] }
     }
     private var observed: LightProfile?
+    private var hardwareQuickEffect: LightEffect? {
+        guard options.enabled, !options.advanced else { return nil }
+        return options.quick.nativeQuickEffect
+    }
+    private var softwareAnimation: Bool {
+        let layers = options.advanced ? draftPreset.layers : [options.quick]
+        return options.enabled && hardwareQuickEffect == nil && (ProcessInfo.processInfo.systemUptime < inputAnimationUntil || layers.contains { layer in
+            layer.enabled && layer.effect.animated && !layer.effect.inputDriven && !layer.startOnKey &&
+            (layer.group == nil || !(options.advanced && draftPreset.groups.contains { $0.id == layer.group && !$0.enabled }))
+        })
+    }
+    private var previewVisible: Bool {
+        previewPageVisible
+    }
+    func setPreviewPageVisible(_ visible: Bool) {
+        guard previewPageVisible != visible else { return }
+        previewPageVisible = visible
+        if visible { restartPreviewAnimation() }
+        else { configureTicker() }
+    }
+    private func restartPreviewAnimation() {
+        previewAnimationUntil = ProcessInfo.processInfo.systemUptime + 5
+        lastPreviewFrameAt = 0
+        configureTicker()
+        refreshPreview(force:true)
+    }
+    private func configureTicker() {
+        let nativeAnimation = hardwareQuickEffect.map { $0 != .solid && $0 != .off } == true
+        let deviceAnimation = softwareAnimation && connected
+        let previewAnimation = previewVisible && !previewPaused &&
+            ProcessInfo.processInfo.systemUptime < previewAnimationUntil && (softwareAnimation || nativeAnimation)
+        // Device frames stay at 10 fps; the visible UI preview needs only 4 fps.
+        let interval: TimeInterval = deviceAnimation ? 0.1 : (previewAnimation ? 0.25 : 2)
+        guard interval != tickInterval else { return }
+        ticker?.invalidate()
+        tickInterval = interval
+        ticker = Timer(timeInterval:interval,repeats:true) { [weak self] _ in self?.tick() }
+        RunLoop.main.add(ticker!,forMode:.common)
+    }
+    private func refreshPreview(force:Bool=false) {
+        let preset = options.advanced ? draftPreset : StudioPreset(layers:[options.quick])
+        if !force && previewOptions == options && previewPreset == preset && previewDisplayOff == displayOff { return }
+        previewOptions = options; previewPreset = preset; previewDisplayOff = displayOff
+        let matrix = renderedFrame(elapsed:previewTime,preview:true).matrix
+        publishingPreview = true
+        defer { publishingPreview = false }
+        if previewMatrix != matrix { previewMatrix = matrix }
+        if preview != matrix[0] { preview = matrix[0] }
+    }
     private func scheduleIfChanged() {
+        configureTicker()
         let p = profile
-        guard p != observed else { return }
+        if p == observed { return }
         guard p.valid else { status = NSLocalizedString("status.invalid_config", comment: ""); return }
         observed = p; generation += 1; cycling = false; sent = nil
+        inputAnimationUntil = 0
         debounce?.cancel()
         cycleStart = ProcessInfo.processInfo.systemUptime
+        lastTick = cycleStart
         lightingHits=[];previewHits=[];previewTime=0
-        preview = p.effect == .off ? RGB(red:0,green:0,blue:0) : (p.effect == .spectrum && customCycle ? p.palette[0] : RGB(red:red,green:green,blue:blue))
+        restartPreviewAnimation()
         let task = DispatchWorkItem { [weak self] in
             guard let self = self, p.valid, !self.suspended else { return }
             let saved = self.save(p)
@@ -154,16 +230,21 @@ final class LightController: ObservableObject {
             self.cycling = true
             self.send(self.renderedFrame(elapsed:0),generation:self.generation,isCycle:self.cycling,saved:saved)
         }
-        debounce = task; DispatchQueue.main.asyncAfter(deadline:.now()+0.25,execute:task)
+        debounce = task; DispatchQueue.main.asyncAfter(deadline:.now()+0.15,execute:task)
     }
-    private func tick() {
+    private func tick(forceFrame:Bool=false) {
         guard !suspended else { return }
+        configureTicker()
         let now = ProcessInfo.processInfo.systemUptime
-        if !previewPaused { previewTime += 0.1*previewSpeed }
-        previewMatrix=renderedFrame(elapsed:previewTime,preview:true).matrix
-        preview=previewMatrix[0]
+        if !previewPaused && now < previewAnimationUntil { previewTime += max(0,now-lastTick)*previewSpeed }
+        lastTick = now
+        // Show five seconds of UI animation; device animation continues independently.
+        if previewVisible && !previewPaused && now < previewAnimationUntil && now - lastPreviewFrameAt >= 0.25 {
+            lastPreviewFrameAt = now
+            refreshPreview(force:tickInterval < 1 || options.offWhenIdle)
+        }
         if now >= refreshAt {
-            refreshAt = now + 2
+            refreshAt = now + 10
             if needsLightingInput && connected {
                 if !inputRequested {
                     inputRequested=true
@@ -180,7 +261,9 @@ final class LightController: ObservableObject {
             }
             if !wasConnected { observed = nil; scheduleIfChanged(); return }
         }
-        guard cycling, connected, !busy else { return }
+        guard (cycling || forceFrame), connected, !busy else { return }
+        // Static lighting is already stored on the device. Poll only for reconnection.
+        guard forceFrame || softwareAnimation || options.offWhenIdle else { return }
         let frame = renderedFrame(elapsed:now-cycleStart)
         guard frame != sent else { return }
         send(frame,generation:generation,isCycle:true,saved:true)
@@ -193,14 +276,24 @@ final class LightController: ObservableObject {
         }
         busy = true
         let location = selectedLocation
+        // Static/non-animated effects can be stored on device permanently
+        let isStaticEffect = [.solid, .spectrum, .wave, .breathing, .reactive, .starlight, .off].contains(p.effect)
+        // Native effects can run on the device without continuous frame writes.
+        let volatile = !isStaticEffect
         queue.async { [weak self] in
-            let result = LightHardware.apply(p,location:location,volatile:isCycle)
+            let result = LightHardware.apply(p,location:location,volatile:volatile)
             DispatchQueue.main.async {
                 guard let self = self else { return }; self.busy = false
                 guard token == self.generation, !self.suspended else { self.scheduleIfChanged(); return }
                 if result.ok {
                     self.sent = p
-                    self.status = self.persistenceError ?? lightingText("running")
+                    let nextStatus = self.persistenceError ?? lightingText("running")
+                    if self.status != nextStatus { self.status = nextStatus }
+                    // Keep only the low-frequency device poll for native effects.
+                    if isStaticEffect && !self.softwareAnimation && !self.options.offWhenIdle {
+                        self.cycling = false
+                        self.configureTicker()
+                    }
                 } else {
                     self.cycling = false; self.status = String(format:NSLocalizedString("status.retry_after_change", comment: ""), result.message)
                 }
@@ -217,6 +310,7 @@ final class LightController: ObservableObject {
             queue.async { _ = LightHardware.apply(dark,location:location,volatile:true) }
         }
         lightingInput.stop(); suspended = true; generation += 1; cycling = false; debounce?.cancel()
+        ticker?.invalidate(); ticker = nil; tickInterval = 0
     }
     func resume() { suspended = false; observed = nil; detect(); scheduleIfChanged() }
 }
@@ -237,6 +331,8 @@ extension LightController {
             options.enabled=p.effect != .off
             options.advanced=p.effect == .custom
             options.quick.effect=p.effect == .spectrum ? .spectrum : .solid
+            // Older profiles used RGB interpolation for their custom palette.
+            options.quick.useHSVBlending=false
             options.quick.colors=[RGB(red:p.red,green:p.green,blue:p.blue)]
             options.quick.duration=p.duration
             options.quick.spectrumPalette=p.customCycle == true
@@ -390,24 +486,47 @@ extension LightController {
     }
     func lightingHit(_ index:Int) {
         guard LightLayout.active.contains(index) else { return }
-        let time=ProcessInfo.processInfo.systemUptime-cycleStart
+        let now=ProcessInfo.processInfo.systemUptime
+        let time=now-cycleStart
         lightingHits.append(LightingHit(index:index,time:time))
         previewHits.append(LightingHit(index:index,time:previewTime))
         if previewHits.count > 128 { previewHits.removeFirst(previewHits.count-128) }
         if lightingHits.count > 128 { lightingHits.removeFirst(lightingHits.count-128) }
+        // Native effects react on the device; they need no software frame per key.
+        guard options.enabled && hardwareQuickEffect == nil else { return }
+        let layers = options.advanced ? draftPreset.layers : [options.quick]
+        for layer in layers where layer.enabled && layer.mask.contains(index) && layer.effect.animated && (layer.effect.inputDriven || layer.startOnKey) {
+            if let id=layer.group, options.advanced && draftPreset.groups.contains(where: { $0.id == id && !$0.enabled }) { continue }
+            let period=layer.duration/layer.speed
+            let lifetime=layer.effect.inputDriven ? period : (layer.repeatCount == 0 ? .infinity : period*Double(layer.repeatCount))
+            inputAnimationUntil=max(inputAnimationUntil,now+layer.delay+lifetime+0.2)
+        }
+        tick(forceFrame:true)
     }
     func requestLightingInput() {
         _ = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
         lightingInput.start(location:selectedLocation)
         inputReady=lightingInput.ready
     }
-    func restartPreview() { cycleStart=ProcessInfo.processInfo.systemUptime; lightingHits=[]; previewHits=[]; previewPaused=false; previewTime=0 }
+    func restartPreview() { cycleStart=ProcessInfo.processInfo.systemUptime; lightingHits=[]; previewHits=[]; previewPaused=false; previewTime=0; restartPreviewAnimation() }
+    func togglePreviewPlayback() {
+        previewPaused.toggle()
+        if previewPaused { configureTicker() }
+        else { restartPreviewAnimation() }
+    }
     func renderedFrame(elapsed:Double,preview:Bool=false) -> LightProfile {
         var p=profile
         var preset=options.advanced ? draftPreset : StudioPreset(layers:[options.quick])
         if !options.advanced { preset.layers[0].mask=LightLayout.active.sorted() }
-        let idle=idleSeconds()
+        let idle=options.offWhenIdle ? idleSeconds() : 0
         let dark = !options.enabled || (displayOff && options.offWhenDisplayOff) || (options.offWhenIdle && idle >= options.idleMinutes*60)
+        if !preview, !dark, let hardware = hardwareQuickEffect {
+            p.effect = hardware
+            if hardware == .solid, let color = options.quick.colors.first {
+                p.red = color.red; p.green = color.green; p.blue = color.blue
+            }
+            return p
+        }
         p.effect = .custom
         p.keyColors=StudioRenderer.render(preset,time:elapsed,hits:preview ? previewHits : lightingHits,brightness:dark ? 0 : options.brightness)
         return p

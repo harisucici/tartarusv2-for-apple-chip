@@ -15,6 +15,7 @@ enum StudioEffect:String,Codable,CaseIterable,Identifiable {
     var name:String { lightingText(rawValue) }
     var inputDriven:Bool { self == .reactive || self == .ripple }
     var animated:Bool { self != .solid && self != .off }
+    var supportsNativePlayback:Bool { [.off,.solid,.spectrum,.wave,.breathing,.reactive,.starlight].contains(self) }
 }
 struct StudioLayer:Codable,Equatable,Identifiable {
     var id = UUID()
@@ -36,6 +37,39 @@ struct StudioLayer:Codable,Equatable,Identifiable {
     var delay = 0.0
     var repeatCount = 0 // zero means indefinitely
     var group:UUID? = nil
+    var useHSVBlending = true // Use HSV color space for smoother transitions
+    var nativeQuickEffect:LightEffect? {
+        guard enabled, opacity == 1, !startOnKey, delay == 0,
+              repeatCount == 0, group == nil, speed == 1 else { return nil }
+        switch effect {
+        case .off: return .off
+        case .solid: return !random && colors.count == 1 ? .solid : nil
+        case .spectrum: return !spectrumPalette && duration == 3 ? .spectrum : nil
+        case .wave:
+            return duration == 3 && width == 1 && centerX == 2.5 && centerY == 1.5 &&
+                (angle == 0 || angle == 180) ? .wave : nil
+        case .breathing: return duration == 7 && (random || colors.count <= 2) ? .breathing : nil
+        case .reactive: return duration == 3 && !random && colors.count == 1 ? .reactive : nil
+        case .starlight: return duration == 3 && (random || colors.count <= 2) ? .starlight : nil
+        default: return nil
+        }
+    }
+    mutating func restoreNativeParameters() {
+        guard effect.supportsNativePlayback else { return }
+        enabled=true; opacity=1; startOnKey=false; delay=0; repeatCount=0; group=nil; speed=1
+        switch effect {
+        case .solid: random=false; colors=Array(colors.prefix(1))
+        case .spectrum: spectrumPalette=false; duration=3
+        case .wave:
+            duration=3; width=1; centerX=2.5; centerY=1.5
+            if angle != 0 && angle != 180 { angle=0 }
+        case .breathing: duration=7; colors=Array(colors.prefix(2))
+        case .reactive: duration=3; random=false; colors=Array(colors.prefix(1))
+        case .starlight: duration=3; colors=Array(colors.prefix(2))
+        case .off: break
+        default: break
+        }
+    }
     var valid:Bool {
         !name.isEmpty && name.count <= 120 && Set(mask).count == mask.count && Set(mask).isSubset(of:LightLayout.active)
         && (1...8).contains(colors.count) && colors.allSatisfy(\.valid)
@@ -103,9 +137,80 @@ struct LightingHit {
 }
 enum StudioRenderer {
     static let black=RGB(red:0,green:0,blue:0)
+
+    // MARK: - HSV Color Space Utilities
+    struct HSV {
+        var hue: Double   // 0...1
+        var saturation: Double  // 0...1
+        var value: Double  // 0...1
+
+        func toRGB() -> RGB {
+            guard saturation > 0 else { return RGB(red:value,green:value,blue:value) }
+            let h = (hue - floor(hue)) * 6
+            let i = Int(h) % 6
+            let f = h - floor(h)
+            let p = value * (1 - saturation)
+            let q = value * (1 - f * saturation)
+            let t = value * (1 - (1 - f) * saturation)
+            switch i {
+            case 0: return RGB(red:value,green:t,blue:p)
+            case 1: return RGB(red:q,green:value,blue:p)
+            case 2: return RGB(red:p,green:value,blue:t)
+            case 3: return RGB(red:p,green:q,blue:value)
+            case 4: return RGB(red:t,green:p,blue:value)
+            default: return RGB(red:value,green:p,blue:q)
+            }
+        }
+
+        static func fromRGB(_ rgb: RGB) -> HSV {
+            let maxC = max(rgb.red, max(rgb.green, rgb.blue))
+            let minC = min(rgb.red, min(rgb.green, rgb.blue))
+            let delta = maxC - minC
+
+            guard delta > 0 else { return HSV(hue: 0, saturation: 0, value: maxC) }
+
+            let saturation = maxC > 0 ? delta / maxC : 0
+            var hue: Double
+
+            if rgb.red == maxC {
+                hue = (rgb.green - rgb.blue) / delta
+            } else if rgb.green == maxC {
+                hue = 2 + (rgb.blue - rgb.red) / delta
+            } else {
+                hue = 4 + (rgb.red - rgb.green) / delta
+            }
+
+            hue /= 6
+            if hue < 0 { hue += 1 }
+
+            return HSV(hue: hue, saturation: saturation, value: maxC)
+        }
+    }
+
+    // MARK: - Color Blending (RGB for backward compatibility, HSV for natural transitions)
     static func mix(_ a:RGB,_ b:RGB,_ t:Double) -> RGB {
         let t=max(0,min(1,t)); return RGB(red:a.red+(b.red-a.red)*t,green:a.green+(b.green-a.green)*t,blue:a.blue+(b.blue-a.blue)*t)
     }
+
+    /// Blend in HSV space for more natural color transitions
+    static func mixHSV(_ a:RGB,_ b:RGB,_ t:Double) -> RGB {
+        let t = max(0, min(1, t))
+        let hsvA = HSV.fromRGB(a)
+        let hsvB = HSV.fromRGB(b)
+
+        // Interpolate hue along shortest path
+        var dh = hsvB.hue - hsvA.hue
+        if abs(dh) > 0.5 {
+            if dh > 0 { dh -= 1 } else { dh += 1 }
+        }
+
+        let h = (hsvA.hue + dh * t).truncatingRemainder(dividingBy: 1)
+        let s = hsvA.saturation + (hsvB.saturation - hsvA.saturation) * t
+        let v = hsvA.value + (hsvB.value - hsvA.value) * t
+
+        return HSV(hue: h < 0 ? h + 1 : h, saturation: s, value: v).toRGB()
+    }
+
     static func scale(_ c:RGB,_ v:Double) -> RGB { RGB(red:c.red*v,green:c.green*v,blue:c.blue*v) }
     static func rainbow(_ phase:Double) -> RGB {
         let h=phase-floor(phase), x=h*6, f=x-floor(x)
@@ -119,7 +224,16 @@ enum StudioRenderer {
         }
     }
     static func noise(_ value:Double) -> Double { let n=sin(value*12.9898+78.233)*43758.5453; return n-floor(n) }
+
+    /// Blend through palette using HSV interpolation for smoother transitions
     static func palette(_ colors:[RGB],_ phase:Double) -> RGB {
+        guard colors.count > 1 else { return colors[0] }
+        let pos=(phase-floor(phase))*Double(colors.count), i=Int(pos)
+        return mixHSV(colors[i],colors[(i+1)%colors.count],pos-Double(i))
+    }
+
+    /// Blend through palette using RGB interpolation (legacy mode)
+    static func paletteRGB(_ colors:[RGB],_ phase:Double) -> RGB {
         guard colors.count > 1 else { return colors[0] }
         let pos=(phase-floor(phase))*Double(colors.count), i=Int(pos)
         return mix(colors[i],colors[(i+1)%colors.count],pos-Double(i))
@@ -144,10 +258,10 @@ enum StudioRenderer {
             let angularPosition=(dx == 0 && dy == 0) ? 0 : atan2(dy,dx)/(2*Double.pi)
             return rainbow(angularPosition-phase+layer.angle/360)
         case .solid:return base
-        case .spectrum:return layer.spectrumPalette ? palette(layer.colors,phase) : rainbow(phase)
+        case .spectrum:return layer.spectrumPalette ? (layer.useHSVBlending ? palette(layer.colors,phase) : paletteRGB(layer.colors,phase)) : rainbow(phase)
         case .breathing:
             let amount=(1-cos(phase*2*Double.pi))/2
-            if layer.colors.count > 1 && !layer.random { return mix(layer.colors[0],layer.colors[1],amount) }
+            if layer.colors.count > 1 && !layer.random { return layer.useHSVBlending ? mixHSV(layer.colors[0],layer.colors[1],amount) : mix(layer.colors[0],layer.colors[1],amount) }
             return scale(base,amount)
         case .wave:
             let theta=layer.angle*Double.pi/180

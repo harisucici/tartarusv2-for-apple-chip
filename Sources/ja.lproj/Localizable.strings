@@ -400,3 +400,7 @@
 "studio.zoom" = "ズーム";
 "studio.removeColor" = "カラーを削除";
 "studio.seconds" = "秒";
+
+"studio.restoreNative" = "デバイス対応設定に戻す";
+"studio.restoreNativeHint" = "戻すとキーボードが再生します。速度・配色・レイヤーのカスタマイズには Mac からの連続送信が必要です。";
+"studio.nativeActive" = "現在の設定はキーボードが再生し、連続送信は不要です。";

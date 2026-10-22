@@ -108,7 +108,7 @@ extension Notification.Name {
 }
 
 enum LightEffect: Int, Codable, CaseIterable, Identifiable {
-    case off = 0, solid = 1, spectrum = 3, custom = 8
+    case off = 0, solid = 1, breathing = 2, spectrum = 3, wave = 4, reactive = 5, starlight = 7, custom = 8
     var id: Int { rawValue }
     var name: String {
         switch self {
@@ -116,6 +116,10 @@ enum LightEffect: Int, Codable, CaseIterable, Identifiable {
         case .off: return NSLocalizedString("effect.off", comment: "")
         case .solid: return NSLocalizedString("effect.solid", comment: "")
         case .spectrum: return NSLocalizedString("effect.spectrum", comment: "")
+        case .breathing: return lightingText("breathing")
+        case .wave: return lightingText("wave")
+        case .reactive: return lightingText("reactive")
+        case .starlight: return lightingText("starlight")
         }
     }
 }
@@ -160,6 +164,14 @@ struct LightProfile: Codable, Equatable {
 }
 enum LightProtocol {
     static let vendor = 5426, product = 555
+    // Tartarus V2 extended matrix brightness: 0F/04, variable store 1, LED 0.
+    static func brightnessPacket(_ brightness: UInt8) -> [UInt8] {
+        var b = [UInt8](repeating:0,count:90)
+        b[1] = 0x1f; b[5] = 3; b[6] = 0x0f; b[7] = 4
+        b[8] = 1; b[10] = brightness
+        b[88] = b[2..<88].reduce(0,^)
+        return b
+    }
     static func matching(location: UInt32? = nil) -> [String:Any] {
         var d: [String:Any] = [kIOHIDVendorIDKey:vendor,kIOHIDProductIDKey:product]
         if let location = location { d[kIOHIDLocationIDKey] = location }
@@ -170,12 +182,28 @@ enum LightProtocol {
     }
     static func packet(_ p: LightProfile, volatile: Bool = false) -> [UInt8] {
         precondition(p.valid)
+        let layer = p.lightingOptions?.quick
+        func rgb(_ color:RGB) -> [UInt8] { [color.red,color.green,color.blue].map { UInt8(($0*255).rounded()) } }
         let args: [UInt8]
         switch p.effect {
         case .custom: args = [0,0,8,0,0,0,0,0,0,0,0,0]
         case .off: args = [1,5,0,0,0,0]
         case .spectrum: args = [1,5,3,0,0,0]
         case .solid: args = [1,5,1,0,0,1] + [p.red,p.green,p.blue].map { UInt8(($0*255).rounded()) }
+        case .wave:
+            args = [1,5,4,layer?.angle == 180 ? 1 : 2,0x70,0]
+        case .breathing:
+            let colors = layer?.colors ?? []
+            if layer?.random == true { args = [1,5,2,0,0,0] }
+            else if colors.count >= 2 { args = [1,5,2,2,0,2] + rgb(colors[0]) + rgb(colors[1]) }
+            else { args = [1,5,2,1,0,1] + rgb(colors.first ?? RGB(red:p.red,green:p.green,blue:p.blue)) }
+        case .reactive:
+            args = [1,5,5,0,2,1] + rgb(layer?.colors.first ?? RGB(red:p.red,green:p.green,blue:p.blue))
+        case .starlight:
+            let colors = layer?.colors ?? []
+            if layer?.random == true { args = [1,5,7,0,2,0] }
+            else if colors.count >= 2 { args = [1,5,7,0,2,2] + rgb(colors[0]) + rgb(colors[1]) }
+            else { args = [1,5,7,0,2,1] + rgb(colors.first ?? RGB(red:p.red,green:p.green,blue:p.blue)) }
         }
         var b = [UInt8](repeating:0,count:90)
         b[1] = 0x1f; b[5] = UInt8(args.count); b[6] = 15; b[7] = 2
@@ -215,6 +243,8 @@ enum LightProtocol {
 func hidError(_ code: IOReturn) -> String { String(format:"0x%08x",UInt32(bitPattern:code)) }
 
 enum LightHardware {
+    // Called only on LightController's serial lighting queue.
+    private static var brightnessByLocation: [UInt32:UInt8] = [:]
     static func devices(location: UInt32? = nil) -> [IOHIDDevice] {
         let m = IOHIDManagerCreate(kCFAllocatorDefault,0)
         IOHIDManagerSetDeviceMatching(m,LightProtocol.matching(location:location) as CFDictionary)
@@ -224,22 +254,23 @@ enum LightHardware {
     static func number(_ d: IOHIDDevice,_ key: String) -> Int { (IOHIDDeviceGetProperty(d,key as CFString) as? NSNumber)?.intValue ?? 0 }
     static func apply(_ p: LightProfile, location: UInt32, volatile: Bool = false) -> (ok:Bool,message:String) {
         guard p.valid, location != 0 else { return (false,NSLocalizedString("hw.please_select_device_and_color", comment: "")) }
-        let packets = LightProtocol.packets(p,volatile:volatile)
-        let ds = devices(location:location)
-        guard !ds.isEmpty else { return (false,NSLocalizedString("hw.device_disconnected_waiting", comment: "")) }
-        for packet in packets {
-            var response = [UInt8](repeating:0,count:90)
-            var length: UInt32 = 0
-            let result = packet.withUnsafeBufferPointer { request in
-                response.withUnsafeMutableBufferPointer { reply in
-                    tartarusLightTransfer(location,request.baseAddress!,reply.baseAddress!,&length)
-                }
+        let desiredBrightness: UInt8 = p.effect == .custom ? 255 : UInt8(((p.lightingOptions?.brightness ?? 1)*255).rounded())
+        let brightnessChanged = brightnessByLocation[location] != desiredBrightness
+        let packets = (brightnessChanged ? [LightProtocol.brightnessPacket(desiredBrightness)] : []) + LightProtocol.packets(p,volatile:volatile)
+        let requests = packets.flatMap { $0 }
+        var response = [UInt8](repeating:0,count:90)
+        var length: UInt32 = 0
+        let result = requests.withUnsafeBufferPointer { request in
+            response.withUnsafeMutableBufferPointer { reply in
+                tartarusLightTransferBatch(location,request.baseAddress!,UInt32(packets.count),reply.baseAddress!,&length)
             }
-            if result == kIOReturnSuccess && LightProtocol.acknowledges(response,length:Int(length),request:packet) {
-                continue
-            }
+        }
+        if result == kIOReturnNoDevice { return (false,NSLocalizedString("hw.device_disconnected_waiting", comment: "")) }
+        guard result == kIOReturnSuccess else {
+            brightnessByLocation.removeValue(forKey:location)
             return (false,String(format: NSLocalizedString("hw.usb_not_acknowledged", comment: ""), hidError(result), Int(response[0]), Int(length)))
         }
+        brightnessByLocation[location] = desiredBrightness
         return (true,String(format:NSLocalizedString("hw.device_acknowledged", comment:""),p.effect.name))
     }
 }

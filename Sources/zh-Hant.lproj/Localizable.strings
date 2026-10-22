@@ -400,3 +400,7 @@
 "studio.zoom" = "縮放";
 "studio.removeColor" = "移除顏色";
 "studio.seconds" = "秒";
+
+"studio.restoreNative" = "還原裝置支援的參數";
+"studio.restoreNativeHint" = "還原後由鍵盤自行播放；自訂速度、配色或圖層仍需 Mac 逐幀傳送。";
+"studio.nativeActive" = "目前參數由鍵盤自行播放，無需持續傳送畫面。";
